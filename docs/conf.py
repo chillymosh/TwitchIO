@@ -16,6 +16,7 @@
 
 
 # -- Project information -----------------------------------------------------
+import re
 import os
 import sys
 
@@ -29,7 +30,9 @@ copyright = "2022, TwitchIO"
 author = "TwitchIO"
 
 # The full version, including alpha/beta/rc tags
-release = "2.2.0"
+release = ''
+with open('../twitchio/__init__.py') as f:
+    release = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,6 +46,16 @@ extensions = [
     "sphinxcontrib.asyncio",
     "sphinx.ext.intersphinx",
     "attributetable",
+    "sphinxext.opengraph"
+]
+
+# OpenGraph Meta Tags
+ogp_image = "https://raw.githubusercontent.com/TwitchIO/TwitchIO/master/logo.png"
+ogp_description = "Documentation for TwitchIO, the asynchronous Python wrapper for Twitch.tv."
+ogp_site_url = "https://twitchio.dev/"
+ogp_custom_meta_tags = [
+    '<meta property="og:description" content="A fully asynchronous Python IRC, API, EventSub and PubSub library for Twitch." />',
+    '<meta property="og:title" content="TwitchIO Documentation" />'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -70,13 +83,14 @@ html_theme_options = {
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
+# so a file named "default.styles" will overwrite the builtin "default.styles".
 # These folders are copied to the documentation's HTML output
 html_static_path = ["_static"]
 
 # These paths are either relative to html_static_path
 # or fully qualified paths (eg. https://...)
-html_css_files = ["css/custom.css"]
+html_css_files = ["styles/furo.css"]
+html_js_files = ["js/custom.js"]
 
 if on_rtd:
     extensions.append("sphinxcontrib.napoleon")

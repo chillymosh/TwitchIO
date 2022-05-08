@@ -4,6 +4,20 @@ Master
 =======
 Massive documentation updates
 
+- TwitchIO
+    - Removed unexpected loop termination from `WSConnection._close()`
+    - Fix bug where # prefixed channel names in initial_channels would not trigger :func:`twitchio.Client.event_ready`
+    - :func:`User.create_clip` has been fixed by converting bool to string in http request
+    - Poll endpoints added :func:`User.fetch_polls` :func:`User.create_poll` and :func:`User.end_poll`
+
+- ext.commands
+    - :func:`Bot.handle_commands` now also invokes on threads / replies
+    - Cooldowns are now handled correctly per bucket.
+    - Fix issue with :func:`Bot.reload_module` where module is reloaded incorrectly if exception occurs
+
+- ext.pubsub
+    - Channel subscription model fixes.
+
 2.2.0
 =====
 - ext.sounds
@@ -17,7 +31,7 @@ Massive documentation updates
     - Fix :func:`twitchio.Client.wait_for_ready`
     - Remove loop= parameter inside :func:`twitchio.Client.wait_for` for 3.10 compatibility
     - Add ``is_broadcaster`` check to :class:`twitchio.PartialChatter`. This is accessible as ``Context.author.is_broadcaster``
-    - :func:`twitchio.User.fetch_follow` will now return ``None`` if the FollowEvent does not exists
+    - :func:`User.fetch_follow` will now return ``None`` if the FollowEvent does not exists
     - TwitchIO will now correctly handle error raised when only the prefix is typed in chat
     - Fix paginate logic in :func:`TwitchHTTP.request`
 
@@ -30,7 +44,7 @@ Massive documentation updates
 - ext.eventsub
     - Add support for the following subscription types
         - :class:`twitchio.ext.eventsub.PollBeginProgressData`
-            - ``channel.poll.begin``: 
+            - ``channel.poll.begin``:
             - ``channel.poll.progress``
         - :class:`twitchio.ext.eventsub.PollEndData`
             - ``channel.poll.end``

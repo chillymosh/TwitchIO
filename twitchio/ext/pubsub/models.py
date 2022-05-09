@@ -27,6 +27,10 @@ from typing import List, Optional
 
 from twitchio import PartialUser, Client, Channel, CustomReward, parse_timestamp
 
+try:
+    import ujson as json
+except Exception:
+    import json
 
 __all__ = (
     "PoolError",
@@ -144,6 +148,7 @@ class PubSubBitsMessage(PubSubMessage):
     def __init__(self, client: Client, topic: str, data: dict):
         super().__init__(client, topic, data)
 
+        data = json.loads(data["data"]["message"]["data"])
         self.message = PubSubChatMessage(data["chat_message"], data["message_id"], data["message_type"])
         self.badge_entitlement = (
             PubSubBadgeEntitlement(data["badge_entitlement"]["new_version"], data["badge_entitlement"]["old_version"])
@@ -180,6 +185,7 @@ class PubSubBitsBadgeMessage(PubSubMessage):
 
     def __init__(self, client: Client, topic: str, data: dict):
         super().__init__(client, topic, data)
+        data = json.loads(data["data"]["message"])
         self.user = PartialUser(client._http, data["user_id"], data["user_name"])
         self.channel: Channel = client.get_channel(data["channel_name"]) or Channel(
             name=data["channel_name"], websocket=client._connection

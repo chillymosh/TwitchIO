@@ -27,11 +27,6 @@ from typing import List, Optional
 
 from twitchio import PartialUser, Client, Channel, CustomReward, parse_timestamp
 
-try:
-    import ujson as json
-except Exception:
-    import json
-
 __all__ = (
     "PoolError",
     "PoolFull",
@@ -83,7 +78,7 @@ class PubSubChatMessage:
 
     def __init__(self, content: str, id: str, type: str):
         self.content = content
-        self.id = int(id)
+        self.id = id
         self.type = type
 
 
@@ -148,17 +143,24 @@ class PubSubBitsMessage(PubSubMessage):
     def __init__(self, client: Client, topic: str, data: dict):
         super().__init__(client, topic, data)
 
-        data = json.loads(data["data"]["message"]["data"])
-        self.message = PubSubChatMessage(data["chat_message"], data["message_id"], data["message_type"])
+        data = data["message"]
+        self.message = PubSubChatMessage(data["data"]["chat_message"], data["message_id"], data["message_type"])
         self.badge_entitlement = (
-            PubSubBadgeEntitlement(data["badge_entitlement"]["new_version"], data["badge_entitlement"]["old_version"])
-            if data["badge_entitlement"]
+            (
+                PubSubBadgeEntitlement(
+                    data["data"]["badge_entitlement"]["new_version"], data["data"]["badge_entitlement"]["old_version"]
+                )
+            )
+            if data["data"]["badge_entitlement"]
             else None
         )
-        self.bits_used: int = data["bits_used"]
-        self.channel_id: int = int(data["channel_id"])
+
+        self.bits_used: int = data["data"]["bits_used"]
+        self.channel_id: int = int(data["data"]["channel_id"])
         self.user = (
-            PartialUser(client._http, data["user_id"], data["user_name"]) if data["user_id"] is not None else None
+            PartialUser(client._http, data["data"]["user_id"], data["data"]["user_name"])
+            if data["data"]["user_id"]
+            else None
         )
         self.version: str = data["version"]
 
@@ -185,7 +187,7 @@ class PubSubBitsBadgeMessage(PubSubMessage):
 
     def __init__(self, client: Client, topic: str, data: dict):
         super().__init__(client, topic, data)
-        data = json.loads(data["data"]["message"])
+        data = data["message"]
         self.user = PartialUser(client._http, data["user_id"], data["user_name"])
         self.channel: Channel = client.get_channel(data["channel_name"]) or Channel(
             name=data["channel_name"], websocket=client._connection

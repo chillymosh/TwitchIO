@@ -260,14 +260,18 @@ class WSConnection:
             An argument list of channels to attempt joining.
         """
         async with self._join_lock:  # acquire a lock, allowing only one join_channels at once...
-            for channel in channels:
-                if self._join_handle < time.time():  # Handle is less than the current time
-                    self._join_tick = 20  # So lets start a new rate limit bucket..
-                    self._join_handle = time.time() + 11  # Set the handle timeout time
-                if self._join_tick == 0:  # We have exhausted the bucket, wait so we can make a new one...
-                    await asyncio.sleep(self._join_handle - time.time())
-                asyncio.create_task(self._join_channel(channel))
-                self._join_tick -= 1
+            if len(channels) > 20:
+                chunks = [channels[i:i + 20] for i in range(0, len(channels), 20)]
+                for chunk in chunks:
+                    print(chunk)
+                    for channel in chunk:
+                        asyncio.create_task(self._join_channel(channel))
+                        print(f"Joining {channel}")   
+                    await asyncio.sleep(11)     
+            else:
+                for channel in channels:
+                    asyncio.create_task(self._join_channel(channel))
+                    print(f"Joining {channel} not sleep")
 
     async def _join_channel(self, entry):
         channel = re.sub("[#]", "", entry).lower()
@@ -278,7 +282,7 @@ class WSConnection:
 
     async def _join_future_handle(self, fut: asyncio.Future, channel: str):
         try:
-            await asyncio.wait_for(fut, timeout=11)
+            await asyncio.wait_for(fut, timeout=45)
         except asyncio.TimeoutError:
             log.error(f'The channel "{channel}" was unable to be joined. Check the channel is valid.')
             self._join_pending.pop(channel)

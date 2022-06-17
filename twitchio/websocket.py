@@ -263,15 +263,12 @@ class WSConnection:
             if len(channels) > 20:
                 chunks = [channels[i:i + 20] for i in range(0, len(channels), 20)]
                 for chunk in chunks:
-                    print(chunk)
                     for channel in chunk:
-                        asyncio.create_task(self._join_channel(channel))
-                        print(f"Joining {channel}")   
+                        asyncio.create_task(self._join_channel(channel)) 
                     await asyncio.sleep(11)     
             else:
                 for channel in channels:
                     asyncio.create_task(self._join_channel(channel))
-                    print(f"Joining {channel} not sleep")
 
     async def _join_channel(self, entry):
         channel = re.sub("[#]", "", entry).lower()

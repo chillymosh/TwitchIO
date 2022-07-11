@@ -366,10 +366,10 @@ class TwitchHTTP:
         }
         if max_per_stream:
             data["max_per_stream"] = max_per_stream
-            data["max_per_stream_enabled"] = True
+            data["is_max_per_stream_enabled"] = True
         if max_per_user:
             data["max_per_user_per_stream"] = max_per_user
-            data["max_per_user_per_stream_enabled"] = True
+            data["is_max_per_user_per_stream_enabled"] = True
         if background_color:
             data["background_color"] = background_color
         if global_cooldown:

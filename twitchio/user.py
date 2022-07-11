@@ -136,6 +136,78 @@ class PartialUser:
         tags = [x if isinstance(x, str) else x.id for x in tags]
         await self._http.put_replace_channel_tags(token, str(self.id), tags)
 
+    async def create_custom_reward(
+        self,
+        token: str,
+        title: str,
+        cost: int,
+        prompt: Optional[str] = None,
+        enabled: Optional[bool] = True,
+        background_color: Optional[str] = None,
+        input_required: Optional[bool] = False,
+        max_per_stream: Optional[int] = None,
+        max_per_user_per_stream: Optional[int] = None,
+        global_cooldown: Optional[int] = None,
+        redemptions_skip_queue: Optional[bool] = False,
+    ) -> "CustomReward":
+        """|coro|
+
+        Creates a custom reward for the user.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            An oauth token with the user:edit:broadcast scope
+        title: :class:`str`
+            The title of the reward
+        cost: :class:`int`
+            The cost of the reward
+        prompt: :class:`str`
+            The prompt for the reward. Defaults to None
+        enabled: :class:`bool`
+            Whether the reward is enabled. Defaults to True
+        background_color: :class:`str`
+            The background color of the reward. Defaults to None
+        input_required: :class:`bool`
+            Whether the reward requires input. Defaults to False
+        max_per_stream: :class:`int`
+            The maximum number of times the reward can be redeemed per stream. Defaults to None
+        max_per_user_per_stream: :class:`int`
+            The maximum number of times the reward can be redeemed per user per stream. Defaults to None
+        global_cooldown: :class:`int`
+            The global cooldown of the reward. Defaults to None
+        redemptions_skip_queue: :class:`bool`
+            Whether the reward skips the queue when redeemed. Defaults to False
+        """
+        try:
+            data = await self._http.create_reward(
+                token,
+                str(self.id),
+                title,
+                cost,
+                prompt,
+                enabled,
+                background_color,
+                input_required,
+                max_per_stream,
+                max_per_user_per_stream,
+                global_cooldown,
+                redemptions_skip_queue,
+            )
+            return CustomReward(self._http, data[0], self)
+        except Unauthorized as error:
+            raise Unauthorized("The given token is invalid", "", 401) from error
+        except HTTPException as error:
+            status = error.args[2]
+            if status == 403:
+                raise HTTPException(
+                    "The custom reward was created by a different application, or channel points are "
+                    "not available for the broadcaster (403)",
+                    error.args[1],
+                    403,
+                ) from error
+            raise
+
     async def get_custom_rewards(
         self, token: str, *, only_manageable=False, ids: List[int] = None, force=False
     ) -> List["CustomReward"]:

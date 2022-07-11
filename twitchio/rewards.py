@@ -260,6 +260,9 @@ class CustomReward:
         else:
             return [CustomRewardRedemption(x, self._http, self) for x in data]
 
+    def __repr__(self):
+        return f"<CustomReward id={self.id} title={self.title} cost={self.cost}>"
+
 
 class CustomRewardRedemption:
 

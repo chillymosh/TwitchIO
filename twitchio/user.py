@@ -162,21 +162,21 @@ class PartialUser:
             The title of the reward
         cost: :class:`int`
             The cost of the reward
-        prompt: :class:`str`
+        prompt: Optional[:class:`str`]
             The prompt for the reward. Defaults to None
-        enabled: :class:`bool`
+        enabled: Optional[:class:`bool`]
             Whether the reward is enabled. Defaults to True
-        background_color: :class:`str`
+        background_color: Optional[:class:`str`]
             The background color of the reward. Defaults to None
-        input_required: :class:`bool`
+        input_required: Optional[:class:`bool`]
             Whether the reward requires input. Defaults to False
-        max_per_stream: :class:`int`
+        max_per_stream: Optional[:class:`int`]
             The maximum number of times the reward can be redeemed per stream. Defaults to None
-        max_per_user_per_stream: :class:`int`
+        max_per_user_per_stream: Optional[:class:`int`]
             The maximum number of times the reward can be redeemed per user per stream. Defaults to None
-        global_cooldown: :class:`int`
+        global_cooldown: Optional[:class:`int`]
             The global cooldown of the reward. Defaults to None
-        redemptions_skip_queue: :class:`bool`
+        redemptions_skip_queue: Optional[:class:`bool`]
             Whether the reward skips the queue when redeemed. Defaults to False
         """
         try:

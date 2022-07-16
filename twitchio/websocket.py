@@ -249,6 +249,16 @@ class WSConnection:
             if self._retain_cache:
                 self._cache.pop(channel, None)
 
+    def _assign_timeout(self, channel_count: int):
+        if channel_count <= 40:
+            return 30
+        elif channel_count <= 60:
+            return 40
+        elif channel_count <= 80:
+            return 50
+        else:
+            return 60
+    
     async def join_channels(self, *channels: str):
         """|coro|
 
@@ -270,16 +280,6 @@ class WSConnection:
         else:
             for channel in channels:
                 asyncio.create_task(self._join_channel(channel, 11))
-
-    def _assign_timeout(self, channel_count: int):
-        if channel_count <= 40:
-            return 30
-        elif channel_count <= 60:
-            return 40
-        elif channel_count <= 80:
-            return 50
-        else:
-            return 60
 
     async def _join_channel(self, entry, timeout):
         channel = re.sub("[#]", "", entry).lower()

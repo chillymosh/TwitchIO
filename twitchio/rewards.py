@@ -347,5 +347,5 @@ class CustomRewardRedemption:
                 ) from error
             raise
         else:
-            self.__init__(data["data"], self._http, self.reward if isinstance(self.reward, CustomReward) else None)
+            self.__init__(data[0], self._http, self.reward if isinstance(self.reward, CustomReward) else None)
             return self

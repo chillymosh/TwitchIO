@@ -463,7 +463,7 @@ class TwitchHTTP:
         self, token: str, broadcaster_id: int, redemption_id: str, custom_reward_id: str, status: bool
     ):
         params = [("id", redemption_id), ("broadcaster_id", str(broadcaster_id)), ("reward_id", custom_reward_id)]
-        status = "FULFILLED" if status else "CANCELLED"
+        status = "FULFILLED" if status else "CANCELED"
         return await self.request(
             Route(
                 "PATCH",

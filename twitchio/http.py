@@ -346,14 +346,14 @@ class TwitchHTTP:
         broadcaster_id: int,
         title: str,
         cost: int,
-        prompt: str = None,
-        is_enabled: bool = True,
-        background_color: str = None,
-        user_input_required: bool = False,
-        max_per_stream: int = None,
-        max_per_user: int = None,
-        global_cooldown: int = None,
-        fufill_immediatly: bool = False,
+        prompt: Optional[str] = None,
+        is_enabled: Optional[bool] = True,
+        background_color: Optional[str] = None,
+        user_input_required: Optional[bool] = False,
+        max_per_stream: Optional[int] = None,
+        max_per_user: Optional[int] = None,
+        global_cooldown: Optional[int] = None,
+        fufill_immediatly: Optional[bool] = False,
     ):
         params = [("broadcaster_id", str(broadcaster_id))]
         data = {
@@ -366,10 +366,10 @@ class TwitchHTTP:
         }
         if max_per_stream:
             data["max_per_stream"] = max_per_stream
-            data["max_per_stream_enabled"] = True
+            data["is_max_per_stream_enabled"] = True
         if max_per_user:
             data["max_per_user_per_stream"] = max_per_user
-            data["max_per_user_per_stream_enabled"] = True
+            data["is_max_per_user_per_stream_enabled"] = True
         if background_color:
             data["background_color"] = background_color
         if global_cooldown:
@@ -389,20 +389,20 @@ class TwitchHTTP:
         token: str,
         broadcaster_id: int,
         reward_id: str,
-        title: str = None,
-        prompt: str = None,
-        cost: int = None,
-        background_color: str = None,
-        enabled: bool = None,
-        input_required: bool = None,
-        max_per_stream_enabled: bool = None,
-        max_per_stream: int = None,
-        max_per_user_per_stream_enabled: bool = None,
-        max_per_user_per_stream: int = None,
-        global_cooldown_enabled: bool = None,
-        global_cooldown: int = None,
-        paused: bool = None,
-        redemptions_skip_queue: bool = None,
+        title: Optional[str] = None,
+        prompt: Optional[str] = None,
+        cost: Optional[int] = None,
+        background_color: Optional[str] = None,
+        enabled: Optional[bool] = None,
+        input_required: Optional[bool] = None,
+        max_per_stream_enabled: Optional[bool] = None,
+        max_per_stream: Optional[int] = None,
+        max_per_user_per_stream_enabled: Optional[bool] = None,
+        max_per_user_per_stream: Optional[int] = None,
+        global_cooldown_enabled: Optional[bool] = None,
+        global_cooldown: Optional[int] = None,
+        paused: Optional[bool] = None,
+        redemptions_skip_queue: Optional[bool] = None,
     ):
         data = {
             "title": title,
@@ -462,12 +462,12 @@ class TwitchHTTP:
     async def update_reward_redemption_status(
         self, token: str, broadcaster_id: int, reward_id: str, custom_reward_id: str, status: bool
     ):
-        params = [("id", custom_reward_id), ("broadcaster_id", str(broadcaster_id)), ("reward_id", reward_id)]
-        status = "FULFILLED" if status else "CANCELLED"
+        params = [("id", reward_id), ("broadcaster_id", str(broadcaster_id)), ("reward_id", custom_reward_id)]
+        status = "FULFILLED" if status else "CANCELED"
         return await self.request(
             Route(
                 "PATCH",
-                "/channel_points/custom_rewards/redemptions",
+                "channel_points/custom_rewards/redemptions",
                 query=params,
                 body={"status": status},
                 token=token,

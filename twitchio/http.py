@@ -487,16 +487,17 @@ class TwitchHTTP:
         return await self.request(Route("GET", "predictions", query=params, token=token), paginate=False)
 
     async def patch_prediction(
-        self, token: str, broadcaster_id: int, prediction_id: str, status: str, winning_outcome_id: str = None
+        self, token: str, broadcaster_id: str, prediction_id: str, status: str, winning_outcome_id: Optional[str] = None
     ):
         body = {
-            "broadcaster_id": str(broadcaster_id),
+            "broadcaster_id": broadcaster_id,
             "id": prediction_id,
             "status": status,
         }
 
-        if status == "RESOLVED":
+        if status == "RESOLVED" and winning_outcome_id:
             body["winning_outcome_id"] = winning_outcome_id
+
         return await self.request(
             Route(
                 "PATCH",
@@ -927,7 +928,7 @@ class TwitchHTTP:
         return await self.request(Route("GET", "goals", query=[("broadcaster_id", broadcaster_id)], token=token))
 
     async def get_chat_settings(
-        self, broadcaster_id: str, moderator_id: Optional[str] = None, token: Optional[str] = None
+        self, broadcaster_id: str, token: Optional[str] = None, moderator_id: Optional[str] = None
     ):
         q = [("broadcaster_id", broadcaster_id)]
         if moderator_id and token:
@@ -936,9 +937,9 @@ class TwitchHTTP:
 
     async def patch_chat_settings(
         self,
+        token: str,
         broadcaster_id: str,
         moderator_id: str,
-        token: str,
         emote_mode: Optional[bool] = None,
         follower_mode: Optional[bool] = None,
         follower_mode_duration: Optional[int] = None,
@@ -969,3 +970,96 @@ class TwitchHTTP:
         }
         data = {k: v for k, v in data.items() if v is not None}
         return await self.request(Route("PATCH", "chat/settings", query=q, body=data, token=token))
+
+    async def post_chat_announcement(
+        self, token: str, broadcaster_id: str, moderator_id: str, message: str, color: Optional[str] = "primary"
+    ):
+        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        body = {"message": message, "color": color}
+        return await self.request(Route("POST", "chat/announcements", query=q, body=body, token=token))
+
+    async def delete_chat_messages(
+        self, token: str, broadcaster_id: str, moderator_id: str, message_id: Optional[str] = None
+    ):
+        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        if message_id:
+            q.append(("message_id", message_id))
+        return await self.request(Route("DELETE", "moderation/chat", query=q, token=token))
+
+    async def put_user_chat_color(self, token: str, user_id: str, color: str):
+        q = [("user_id", user_id), ("color", color)]
+        return await self.request(Route("PUT", "chat/color", query=q, token=token))
+
+    async def get_user_chat_color(self, user_ids: List[int], token: Optional[str] = None):
+        if len(user_ids) > 100:
+            raise ValueError("You can only get up to 100 user chat colors at once")
+        q = [("user_id", str(user_id)) for user_id in user_ids]
+        return await self.request(Route("GET", "chat/color", query=q, token=token))
+
+    async def post_channel_moderator(self, token: str, broadcaster_id: str, user_id: str):
+        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("POST", "moderation/moderators", query=q, token=token))
+
+    async def delete_channel_moderator(self, token: str, broadcaster_id: str, user_id: str):
+        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("DELETE", "moderation/moderators", query=q, token=token))
+
+    async def get_channel_vips(
+        self, token: str, broadcaster_id: str, first: int = 20, user_ids: Optional[List[int]] = None
+    ):
+        q = [("broadcaster_id", broadcaster_id), ("first", first)]
+        if first > 100:
+            raise ValueError("You can only get up to 100 VIPs at once")
+        if user_ids:
+            if len(user_ids) > 100:
+                raise ValueError("You can can only specify up to 100 VIPs")
+            q.extend(("user_id", str(user_id)) for user_id in user_ids)
+        return await self.request(Route("GET", "channels/vips", query=q, token=token))
+
+    async def post_channel_vip(self, token: str, broadcaster_id: str, user_id: str):
+        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("POST", "channels/vips", query=q, token=token))
+
+    async def delete_channel_vip(self, token: str, broadcaster_id: str, user_id: str):
+        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("DELETE", "channels/vips", query=q, token=token))
+
+    async def post_whisper(self, token: str, from_user_id: str, to_user_id: str, message: str):
+        q = [("from_user_id", from_user_id), ("to_user_id", to_user_id)]
+        body = {"message": message}
+        return await self.request(Route("POST", "whispers", query=q, body=body, token=token))
+
+    async def post_raid(self, token: str, from_broadcaster_id: str, to_broadcaster_id: str):
+        q = [("from_broadcaster_id", from_broadcaster_id), ("to_broadcaster_id", to_broadcaster_id)]
+        return await self.request(Route("POST", "raids", query=q, token=token))
+
+    async def delete_raid(self, token: str, broadcaster_id: str):
+        q = [("broadcaster_id", broadcaster_id)]
+        return await self.request(Route("DELETE", "raids", query=q, token=token))
+
+    async def post_ban_timeout_user(
+        self,
+        token: str,
+        broadcaster_id: str,
+        moderator_id: str,
+        user_id: str,
+        reason: str,
+        duration: Optional[int] = None,
+    ):
+        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        body = {"data": {"user_id": user_id, "reason": reason}}
+        if duration:
+            if duration < 1 or duration > 1209600:
+                raise ValueError("Duration must be between 1 and 1209600 seconds")
+            body["data"]["duration"] = str(duration)
+        return await self.request(Route("POST", "moderation/bans", query=q, body=body, token=token))
+
+    async def delete_ban_timeout_user(
+        self,
+        token: str,
+        broadcaster_id: str,
+        moderator_id: str,
+        user_id: str,
+    ):
+        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id), ("user_id", user_id)]
+        return await self.request(Route("DELETE", "moderation/bans", query=q, token=token))

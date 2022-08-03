@@ -704,7 +704,7 @@ class Client:
         Parameters
         -----------
         token: :class:`str`
-            An oauth token with the channel:manage:videos scope
+            An oauth token with the ``channel:manage:videos`` scope
         ids: List[:class:`int`]
             A list of video ids from the channel of the oauth token to delete
 
@@ -717,6 +717,46 @@ class Client:
             resp.append(await self._http.delete_videos(token, chunk))
 
         return resp
+
+    async def fetch_chatters_colors(self, user_ids: List[int], token: Optional[str] = None):
+        """|coro|
+
+        Fetches the color of a chatter.
+
+        Parameters
+        -----------
+        user_ids: List[:class:`int`]
+            List of user ids to fetch the colors for
+        token: Optional[:class:`str`]
+            An optional user oauth token
+
+        Returns
+        --------
+            List[:class:`twitchio.ChatterColor`]
+        """
+        data = await self._http.get_user_chat_color(user_ids, token)
+        return [models.ChatterColor(self._http, x) for x in data]
+
+    async def update_chatter_color(self, token: str, user_id: int, color: str):
+        """|coro|
+
+        Updates the color of the specified user in the specified channel/broadcaster's chat.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            An oauth token with the ``user:manage:chat_color`` scope.
+        user_id: :class:`int`
+            The ID of the user whose color is being updated, this must match the user ID in the token.
+        color: :class:`str`
+            Turbo and Prime users may specify a named color or a Hex color code like #9146FF.
+            Please see the Twitch documentation for more information.
+
+        Returns
+        --------
+            None
+        """
+        await self._http.put_user_chat_color(token=token, user_id=str(user_id), color=color)
 
     async def get_webhook_subscriptions(self):
         """|coro|

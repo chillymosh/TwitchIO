@@ -4,15 +4,35 @@ Master
 ======
 - TwitchIO
     - Additions
-        - Added :func:`twitchio.PartialUser.create_custom_reward` to allow custom reward creations
+        - Added following new PartialUser methods:
+            - :func:`twitchio.PartialUser.create_custom_reward`
+            - :func:`twitchio.PartialUser.chat_announcement`
+            - :func:`twitchio.PartialUser.delete_chat_messages`
+            - :func:`twitchio.PartialUser.fetch_channel_vips`
+            - :func:`twitchio.PartialUser.add_channel_vip`
+            - :func:`twitchio.PartialUser.remove_channel_vip`
+            - :func:`twitchio.PartialUser.add_channel_moderator`
+            - :func:`twitchio.PartialUser.remove_channel_moderator`
+            - :func:`twitchio.PartialUser.start_raid`
+            - :func:`twitchio.PartialUser.cancel_raid`
+            - :func:`twitchio.PartialUser.ban_user`
+            - :func:`twitchio.PartialUser.timeout_user`
+            - :func:`twitchio.PartialUser.unban_user`
+            - :func:`twitchio.PartialUser.send_whisper`
+        - Added following new Client methods:
+            - :func:`~twitchio.Client.fetch_chatters_colors`
+            - :func:`~twitchio.Client.update_chatter_color`
         - Add ``duration`` and ``vod_offset`` attributes to :class:`~twitchio.Clip`
         - Added repr for :class:`~twitchio.CustomReward`
+        - Added repr for :class:`~twitchio.PredictionOutcome`
+        - Add extra attributes to :class:`~twitchio.UserBan`
     - Bug fixes
         - Added ``self.registered_callbacks = {}`` to :func:`~twitchio.Client.from_client_credentials`
         - Allow empty or missing initial_channels to trigger :func:`~twitchio.Client.event_ready`
         - Corrected :func:`twitchio.CustomRewardRedemption.fulfill` endpoint typo and creation
         - Corrected :func:`twitchio.CustomRewardRedemption.refund` endpoint typo and creation
         - Changed :func:`~twitchio.Client.join_channels` logic to handle bigger channel lists better
+        - Corrected :class:`~twitchio.Predictor` slots and user keys, repr has also been added
 
 - ext.commands
     - Bug fixes

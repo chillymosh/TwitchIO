@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import random
 import time
-from typing import Callable, Generic, Literal, TypeVar, Union, overload
+from typing import Callable, Generic, Literal, TypeVar, overload
 
 T = TypeVar("T", bool, Literal[True], Literal[False])
 
@@ -60,7 +60,7 @@ class ExponentialBackoff(Generic[T]):
         rand = random.Random()
         rand.seed()
 
-        self._randfunc: Callable[..., Union[int, float]] = rand.randrange if integral else rand.uniform
+        self._randfunc: Callable[..., int | float] = rand.randrange if integral else rand.uniform
 
     @overload
     def delay(self: ExponentialBackoff[Literal[False]]) -> float:
@@ -71,10 +71,10 @@ class ExponentialBackoff(Generic[T]):
         ...
 
     @overload
-    def delay(self: ExponentialBackoff[bool]) -> Union[int, float]:
+    def delay(self: ExponentialBackoff[bool]) -> int | float:
         ...
 
-    def delay(self) -> Union[int, float]:
+    def delay(self) -> int | float:
         """Compute the next delay
         Returns the next delay to wait according to the exponential
         backoff algorithm.  This is a value between 0 and base * 2^exp

@@ -21,7 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import re
-from typing import Dict, Optional, Union
 
 USER_REGEX = re.compile(r"user-type=*\S*.:(?P<USER>.*?)!\S*")
 CHANNEL_REGEX = re.compile(r"tmi\.twitch\.tv [A-Z()]* #(?P<CHANNEL>\S*)")
@@ -40,17 +39,17 @@ class IRCPayload:
         The code received via Twitch. If no code was received this will be 200 to denote success.
     tags: dict
         The tags associated with the IRC payload. Could be an empty dict if no tags were received.
-    action: Optional[str]
+    action: Optional[:class:`str`]
         The IRC action. E.g PRIVMSG or ROOMSTATE. Could be None.
-    message: Optional[str]
+    message: Optional[:class:`str`]
         The message associated with the IRC payload. Could be None.
-    channel: Optional[str]
+    channel: Optional[:class:`str`]
         The channel this payload was received in. Could be None.
-    user: Optional[str]
+    user: Optional[:class:`str`]
         The user this payload related to. Could be None.
-    names: Optional[list]
+    names: Optional[:class:`list`]
         A list of names received with JOIN/Code 353. Could be None.
-    badges: dict
+    badges: :class:`dict`
         The badges received via tags. Could be an empty dict if no badges were received.
     """
 
@@ -60,11 +59,11 @@ class IRCPayload:
         raw: str,
         code: int,
         tags: dict,
-        action: Optional[str] = None,
-        message: Optional[str] = None,
-        channel: Optional[str] = None,
-        user: Optional[str] = None,
-        names: Optional[list] = None,
+        action: str | None = None,
+        message: str | None = None,
+        channel: str | None = None,
+        user: str | None = None,
+        names: list | None = None,
     ):
         self.raw = raw
         self.code = code
@@ -96,7 +95,7 @@ class IRCPayload:
 
         parts = data.split(" ")
 
-        tags: Dict[str, Union[Dict[str, str], str, int]] = {"badges": {}}
+        tags: dict[str, dict[str, str] | str | int] = {"badges": {}}
 
         try:
             parts.remove(TMI)

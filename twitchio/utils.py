@@ -22,7 +22,7 @@ SOFTWARE.
 """
 
 import datetime
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import iso8601
 
@@ -31,7 +31,7 @@ __all__ = ("json_loader", "json_dumper")
 try:
     from orjson import dumps as _orjson_dumps, loads as _loads
 
-    def _dumps(obj: Union[Dict[str, Any], List[Any]]) -> str:  # orjson returns bytes instead of str, so patch it here
+    def _dumps(obj: dict[str, Any] | list[Any]) -> str:  # orjson returns bytes instead of str, so patch it here
         return _orjson_dumps(obj).decode()
 
     HAS_MODDED_JSON = True

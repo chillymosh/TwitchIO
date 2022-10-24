@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, cast
 
 import aiohttp
 
@@ -56,15 +56,15 @@ class Websocket:
         client: Client,
         limiter: IRCRateLimiter,
         shard_index: int = 1,
-        heartbeat: Optional[float] = 30.0,
-        join_timeout: Optional[float] = 10.0,
-        initial_channels: Optional[list] = None,
-        cache_size: Optional[int] = None,
+        heartbeat: float | None = 30.0,
+        join_timeout: float | None = 10.0,
+        initial_channels: list | None = None,
+        cache_size: int | None = None,
         **_,
     ):
         self.client = client
 
-        self.ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        self.ws: aiohttp.ClientWebSocketResponse | None = None
         self.heartbeat = heartbeat
 
         self.join_limiter = limiter
@@ -73,7 +73,7 @@ class Websocket:
 
         self.token_handler = token_handler
         self.shard_index = shard_index
-        self.nick: Optional[str] = None
+        self.nick: str | None = None
         self.initial_channels = initial_channels
 
         self._backoff = ExponentialBackoff()
@@ -279,7 +279,7 @@ class Websocket:
 
     async def part_event(self, payload: IRCPayload) -> None:
         if payload.user == self.nick:
-            channel: Optional[Channel] = self._channel_cache.pop(payload.channel)
+            channel: Channel | None = self._channel_cache.pop(payload.channel)
         else:
             channel = Channel(name=payload.channel, websocket=self)
 

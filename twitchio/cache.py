@@ -21,11 +21,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import collections
-from typing import Optional
 
 
 class Cache:
-    def __init__(self, *, size: Optional[int] = None):
+    def __init__(self, *, size: int | None = None):
         self.size = size or 99999999  # Arbitrarily large size...
 
         self.nodes = collections.OrderedDict()

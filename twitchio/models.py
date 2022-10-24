@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import datetime
 import time
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 from .channel import Channel
 from .enums import BroadcasterTypeEnum, ModEventEnum, UserTypeEnum
@@ -88,9 +88,9 @@ __all__ = (
 
 
 class ActiveExtensionType(TypedDict):
-    panels: Dict[int, ActiveExtension]
-    overlay: Dict[int, ActiveExtension]
-    component: Dict[int, ActiveExtension]
+    panels: dict[int, ActiveExtension]
+    overlay: dict[int, ActiveExtension]
+    component: dict[int, ActiveExtension]
 
 
 class PartialUser:
@@ -112,7 +112,7 @@ class PartialUser:
         self.name: str | None = name
         self._http: HTTPHandler = http
 
-        self._cached_rewards: Optional[Tuple[float, List[CustomReward]]] = None
+        self._cached_rewards: tuple[float, list[CustomReward]] | None = None
 
     def __repr__(self) -> str:
         return f"<PartialUser id={self.id}, name={self.name}>"
@@ -158,19 +158,19 @@ class PartialUser:
         """
         await self._http.put_update_user(self, description)
 
-    async def fetch_tags(self) -> List[Tag]:
+    async def fetch_tags(self) -> list[Tag]:
         """|coro|
 
         Fetches tags the user currently has active.
 
         Returns
         --------
-            List[:class:`Tag`]
+            list[:class:`Tag`]
         """
         data = await self._http.get_channel_tags(str(self.id))
         return [Tag(self._http, x) for x in data["data"]]
 
-    async def replace_tags(self, tags: List[Union[str, Tag]]) -> None:
+    async def replace_tags(self, tags: list[str | Tag]) -> None:
         """|coro|
 
         Replaces the channels active tags. Tags expire 72 hours after being applied,
@@ -180,14 +180,14 @@ class PartialUser:
         -----------
         token: :class:`str`
             An oauth token with the user:edit:broadcast scope
-        tags: List[Union[:class:`Tag`, :class:`str`]]
+        tags: list[Union[:class:`Tag`, :class:`str`]]
             A list of :class:`Tag` or tag ids to put on the channel. Max 100
         """
         tags_ = [x if isinstance(x, str) else x.id for x in tags]
         await self._http.put_replace_channel_tags(self, str(self.id), tags_)
 
     async def get_custom_rewards(
-        self, *, only_manageable=False, ids: Optional[List[int]] = None, force=False
+        self, *, only_manageable=False, ids: list[int] | None = None, force=False
     ) -> HTTPAwaitableAsyncIterator[CustomReward]:
         """|coro|
 
@@ -197,14 +197,14 @@ class PartialUser:
         ----------
         only_manageable: :class:`bool`
             Whether to fetch all rewards or only ones you can manage. Defaults to false.
-        ids: List[:class:`int`]
+        ids: list[:class:`int`]
             An optional list of reward ids
         force: :class:`bool`
             Whether to force a fetch or try to get from cache. Defaults to False
 
         Returns
         -------
-        List[:class:`~twitchio.CustomReward`]
+        list[:class:`~twitchio.CustomReward`]
         """
         if not force and self._cached_rewards and self._cached_rewards[0] + 300 > time.monotonic():
             return HTTPAwaitableAsyncIteratorWithSource(self._cached_rewards[1])
@@ -223,8 +223,8 @@ class PartialUser:
     async def fetch_bits_leaderboard(
         self,
         period: Literal["all", "day", "week", "month", "year"] = "all",
-        user_id: Optional[int] = None,
-        started_at: Optional[datetime.datetime] = None,
+        user_id: int | None = None,
+        started_at: datetime.datetime | None = None,
     ) -> BitsLeaderboard:
         """|coro|
 
@@ -286,7 +286,7 @@ class PartialUser:
 
         Returns
         --------
-        List[:class:`twitchio.Clip`]
+        list[:class:`twitchio.Clip`]
         """
 
         iterator: HTTPAwaitableAsyncIterator[Clip] = self._http.get_clips(self.id)
@@ -294,7 +294,7 @@ class PartialUser:
 
         return iterator
 
-    def fetch_hypetrain_events(self, id: Optional[str] = None) -> HTTPAwaitableAsyncIterator[HypeTrainEvent]:
+    def fetch_hypetrain_events(self, id: str | None = None) -> HTTPAwaitableAsyncIterator[HypeTrainEvent]:
         """|coro|
 
         Fetches hypetrain event from the api. Needs a token with the channel:read:hype_train scope.
@@ -306,26 +306,26 @@ class PartialUser:
 
         Returns
         --------
-            List[:class:`twitchio.HypeTrainEvent`]
+            list[:class:`twitchio.HypeTrainEvent`]
             A list of hypetrain events
         """
         iterator: HTTPAwaitableAsyncIterator[HypeTrainEvent] = self._http.get_hype_train(str(self.id), id=id)
         iterator.set_adapter(lambda handler, data: HypeTrainEvent(handler, data))
         return iterator
 
-    def fetch_bans(self, userids: Optional[List[Union[str, int]]] = None) -> HTTPAwaitableAsyncIterator[UserBan]:
+    def fetch_bans(self, userids: list[str | int] | None = None) -> HTTPAwaitableAsyncIterator[UserBan]:
         """|coro|
 
         Fetches a list of people the User has banned from their channel. Requires an OAuth token with the ``moderation:read`` scope.
 
         Parameters
         -----------
-        userids: List[Union[:class:`str`, :class:`int`]]
+        userids: list[Union[:class:`str`, :class:`int`]]
             An optional list of userids to fetch. Will fetch all bans if this is not passed
 
         Returns
         --------
-        List[:class:`UserBan`]
+        list[:class:`UserBan`]
         """
         iterator: HTTPAwaitableAsyncIterator[UserBan] = self._http.get_channel_bans(
             self, str(self.id), user_ids=userids
@@ -333,7 +333,7 @@ class PartialUser:
         iterator.set_adapter(lambda handler, data: UserBan(handler, data))
         return iterator
 
-    def fetch_ban_events(self, userids: Optional[List[int]] = None) -> HTTPAwaitableAsyncIterator[BanEvent]:
+    def fetch_ban_events(self, userids: list[int] | None = None) -> HTTPAwaitableAsyncIterator[BanEvent]:
         """|coro|
 
         Fetches ban/unban events from the User's channel. Requires an OAuth token with the ``moderation:read`` scope.
@@ -342,12 +342,12 @@ class PartialUser:
         -----------
         token: :class:`str`
             The oauth token with the moderation:read scope.
-        userids: List[:class:`int`]
+        userids: list[:class:`int`]
             An optional list of users to fetch ban/unban events for
 
         Returns
         --------
-            List[:class:`BanEvent`]
+            list[:class:`BanEvent`]
         """
 
         iterator: HTTPAwaitableAsyncIterator[BanEvent] = self._http.get_channel_ban_unban_events(
@@ -356,19 +356,19 @@ class PartialUser:
         iterator.set_adapter(lambda handler, data: BanEvent(handler, data, self))
         return iterator
 
-    def fetch_moderators(self, userids: Optional[List[int]] = None) -> HTTPAwaitableAsyncIterator[PartialUser]:
+    def fetch_moderators(self, userids: list[int] | None = None) -> HTTPAwaitableAsyncIterator[PartialUser]:
         """|coro|
 
         Fetches the moderators for this channel. Requires an OAuth token with the ``moderation:read`` scope.
 
         Parameters
         -----------
-        userids: List[:class:`int`]
+        userids: list[:class:`int`]
             An optional list of users to check mod status of
 
         Returns
         --------
-            List[:class:`twitchio.PartialUser`]
+            list[:class:`twitchio.PartialUser`]
         """
         iterator: HTTPAwaitableAsyncIterator[PartialUser] = self._http.get_channel_moderators(
             self, str(self.id), user_ids=userids
@@ -383,25 +383,25 @@ class PartialUser:
 
         Returns
         --------
-            List[:class:`twitchio.ModEvent`]
+            list[:class:`twitchio.ModEvent`]
         """
         iterator: HTTPAwaitableAsyncIterator[ModEvent] = self._http.get_channel_mod_events(self, str(self.id))
         iterator.set_adapter(lambda handler, data: ModEvent(handler, data, self))
         return iterator
 
-    async def automod_check(self, query: List[AutomodCheckMessage]) -> List[AutomodCheckResponse]:
+    async def automod_check(self, query: list[AutomodCheckMessage]) -> list[AutomodCheckResponse]:
         """|coro|
 
         Checks if a string passes the automod filter. Requires an OAuth token with the ``moderation:read`` scope.
 
         Parameters
         -----------
-        query: List[:class:`AutomodCheckMessage`]
+        query: list[:class:`AutomodCheckMessage`]
             A list of :class:`AutomodCheckMessage`
 
         Returns
         --------
-            List[:class:`AutomodCheckResponse`]
+            list[:class:`AutomodCheckResponse`]
         """
         data = await self._http.post_automod_check(self, str(self.id), [x._to_dict() for x in query])
         return [AutomodCheckResponse(d) for d in data["data"]]
@@ -425,7 +425,7 @@ class PartialUser:
 
         Returns
         --------
-            List[:class:`FollowEvent`]
+            list[:class:`FollowEvent`]
         """
         iterator = self._http.get_user_follows(target=self, from_id=str(self.id))
         iterator.set_adapter(lambda handler, data: FollowEvent(handler, data, self))
@@ -438,13 +438,13 @@ class PartialUser:
 
         Returns
         --------
-            List[:class:`FollowEvent`]
+            list[:class:`FollowEvent`]
         """
         iterator = self._http.get_user_follows(to_id=str(self.id))
         iterator.set_adapter(lambda handler, data: FollowEvent(handler, data, self))
         return iterator
 
-    async def fetch_follow(self, to_user: PartialUser) -> Optional[FollowEvent]:
+    async def fetch_follow(self, to_user: PartialUser) -> FollowEvent | None:
         """|coro|
 
         Check if a user follows another user or when they followed a user.
@@ -468,7 +468,7 @@ class PartialUser:
         data = await iterator
         return data[0] if data else None
 
-    async def follow(self, target: Union[User, PartialUser], *, notifications=False) -> None:
+    async def follow(self, target: User | PartialUser, *, notifications=False) -> None:
         """|coro|
 
         Follows the target user. Requires an OAuth token with the ``user:edit:follows`` scope.
@@ -487,7 +487,7 @@ class PartialUser:
             self, from_id=str(self.id), to_id=str(target.id), notifications=notifications
         )
 
-    async def unfollow(self, target: Union[User, PartialUser]) -> None:
+    async def unfollow(self, target: User | PartialUser) -> None:
         """|coro|
 
         Unfollows the target user. Requires an OAuth token with the ``user:edit:follows`` scope.
@@ -503,7 +503,7 @@ class PartialUser:
         await self._http.delete_unfollow_channel(self, to_id=str(target.id), from_id=str(self.id))
 
     async def fetch_subscriptions(
-        self, userids: Optional[List[int]] = None
+        self, userids: list[int] | None = None
     ) -> HTTPAwaitableAsyncIterator[SubscriptionEvent]:
         """|coro|
 
@@ -513,12 +513,12 @@ class PartialUser:
         -----------
         token: :class:`str`
             An oauth token with the channel:read:subscriptions scope
-        userids: Optional[List[:class:`int`]]
+        userids: Optional[list[:class:`int`]]
             An optional list of userids to look for
 
         Returns
         --------
-            List[:class:`twitchio.SubscriptionEvent`]
+            list[:class:`twitchio.SubscriptionEvent`]
         """
         iterator: HTTPAwaitableAsyncIterator[SubscriptionEvent] = self._http.get_channel_subscriptions(
             self, str(self.id), user_ids=[str(x) for x in (userids or ())]
@@ -526,7 +526,7 @@ class PartialUser:
         iterator.set_adapter(lambda handler, data: SubscriptionEvent(handler, data, self))
         return iterator
 
-    async def create_marker(self, description: Optional[str] = None) -> Marker:
+    async def create_marker(self, description: str | None = None) -> Marker:
         """|coro|
 
         Creates a marker on the stream. This only works if the channel is live (among other conditions).
@@ -544,7 +544,7 @@ class PartialUser:
         data = await self._http.post_stream_marker(self, user_id=str(self.id), description=description)
         return Marker(data["data"][0])
 
-    async def fetch_markers(self, video_id: Optional[str] = None) -> Optional[VideoMarkers]:
+    async def fetch_markers(self, video_id: str | None = None) -> VideoMarkers | None:
         """|coro|
 
         Fetches markers from the given video id, or the most recent video.
@@ -564,14 +564,14 @@ class PartialUser:
         if data:
             return VideoMarkers(data[0]["videos"])
 
-    async def fetch_extensions(self) -> List[Extension]:
+    async def fetch_extensions(self) -> list[Extension]:
         """|coro|
 
         Fetches extensions the user has (active and inactive). Requires an OAuth token with the ``user:read:broadcast`` scope.
 
         Returns
         --------
-            List[:class:`Extension`]
+            list[:class:`Extension`]
         """
         data = await self._http.get_channel_extensions(self)
         return [Extension(d) for d in data["data"]]
@@ -589,7 +589,7 @@ class PartialUser:
 
         Returns
         --------
-            Dict[Literal["panel", "overlay", "component"], Dict[:class:`int`, :class:`ActiveExtension`]]
+            dict[Literal["panel", "overlay", "component"], dict[:class:`int`, :class:`ActiveExtension`]]
         """
         data = await self._http.get_user_active_extensions(self, str(self.id))
         return {typ: {int(n): ActiveExtension(d) for n, d in vals.items()} for typ, vals in data.items()}  # type: ignore
@@ -608,7 +608,7 @@ class PartialUser:
 
         Returns
         --------
-            Dict[:class:`str`, Dict[:class:`int`, :class:`twitchio.ActiveExtension`]]
+            dict[:class:`str`, dict[:class:`int`, :class:`twitchio.ActiveExtension`]]
         """
         data = await self._http.put_user_extensions(self, extensions._to_dict())
         return {typ: {int(n): ActiveExtension(d) for n, d in vals.items()} for typ, vals in data.items()}  # type: ignore
@@ -637,7 +637,7 @@ class PartialUser:
 
         Returns
         --------
-            List[:class:`twitchio.Video`]
+            list[:class:`twitchio.Video`]
         """
         iterator: HTTPAwaitableAsyncIterator[Video] = self._http.get_videos(
             user_id=str(self.id), period=period, sort=sort, type=type, language=language
@@ -646,7 +646,7 @@ class PartialUser:
         return iterator
 
     async def end_prediction(
-        self, prediction_id: str, status: str, winning_outcome_id: Optional[str] = None
+        self, prediction_id: str, status: str, winning_outcome_id: str | None = None
     ) -> Prediction:
         """|coro|
 
@@ -674,7 +674,7 @@ class PartialUser:
         )
         return Prediction(self._http, data[0])
 
-    async def get_predictions(self, prediction_id: Optional[str] = None) -> List[Prediction]:
+    async def get_predictions(self, prediction_id: str | None = None) -> list[Prediction]:
         """|coro|
 
         Gets information on a prediction or the list of predictions if none is provided.
@@ -686,7 +686,7 @@ class PartialUser:
 
         Returns
         --------
-            List[:class:`Prediction`]
+            list[:class:`Prediction`]
         """
 
         data = await self._http.get_predictions(self, broadcaster_id=self.id, prediction_id=prediction_id)
@@ -726,7 +726,7 @@ class PartialUser:
         return Prediction(self._http, data[0])
 
     async def modify_stream(
-        self, token: str, game_id: Optional[int] = None, language: Optional[str] = None, title: Optional[str] = None
+        self, token: str, game_id: int | None = None, language: str | None = None, title: str | None = None
     ):
         """|coro|
 
@@ -755,9 +755,9 @@ class PartialUser:
 
     async def fetch_schedule(
         self,
-        segment_ids: Optional[List[str]] = None,
-        start_time: Optional[datetime.datetime] = None,
-        utc_offset: Optional[int] = None,
+        segment_ids: list[str]  | None = None,
+        start_time: datetime.datetime | None = None,
+        utc_offset: int | None = None,
         first: int = 20,
     ):
         """|coro|
@@ -765,7 +765,7 @@ class PartialUser:
         Fetches the schedule of a streamer
         Parameters
         -----------
-        segment_ids: Optional[List[:class:`str`]]
+        segment_ids: Optional[list[:class:`str`]]
             List of segment IDs of the stream schedule to return. Maximum: 100
         start_time: Optional[:class:`datetime.datetime`]
             A datetime object to start returning stream segments from. If not specified, the current date and time is used.
@@ -795,7 +795,7 @@ class PartialUser:
 
         Returns
         --------
-        List[:class:`twitchio.ChannelTeams`]
+        list[:class:`twitchio.ChannelTeams`]
         """
 
         data = await self._http.get_channel_teams(
@@ -805,7 +805,7 @@ class PartialUser:
         return [ChannelTeams(self._http, x) for x in data]
 
     def fetch_polls(
-        self, poll_ids: Optional[List[str]] = None, first: Optional[int] = 20
+        self, poll_ids: list[str] | None = None, first: int | None = 20
     ) -> HTTPAwaitableAsyncIterator[Poll]:
         """|coro|
 
@@ -813,14 +813,14 @@ class PartialUser:
 
         Parameters
         -----------
-        poll_ids: Optional[List[:class:`str`]]
+        poll_ids: Optional[list[:class:`str`]]
             List of poll IDs to return. Maximum: 100
         first: Optional[:class:`int`]
             Number of polls to return. Maximum: 20. Default: 20.
 
         Returns
         --------
-        List[:class:`twitchio.Poll`]
+        list[:class:`twitchio.Poll`]
         """
 
         data: HTTPAwaitableAsyncIterator[Poll] = self._http.get_polls(
@@ -832,12 +832,12 @@ class PartialUser:
     async def create_poll(
         self,
         title: str,
-        choices: List[str],
+        choices: list[str],
         duration: int,
-        bits_voting_enabled: Optional[bool] = False,
-        bits_per_vote: Optional[int] = None,
-        channel_points_voting_enabled: Optional[bool] = False,
-        channel_points_per_vote: Optional[int] = None,
+        bits_voting_enabled:bool | None = False,
+        bits_per_vote: int | None = None,
+        channel_points_voting_enabled:bool | None = False,
+        channel_points_per_vote: int | None = None,
     ):
         """|coro|
 
@@ -847,7 +847,7 @@ class PartialUser:
         -----------
         title: :class:`str`
             Question displayed for the poll.
-        choices: List[:class:`str`]
+        choices: list[:class:`str`]
             List of choices for the poll. Must be between 2 and 5 choices.
         duration: :class:`int`
             Total duration for the poll in seconds. Must be between 15 and 1800.
@@ -862,7 +862,7 @@ class PartialUser:
 
         Returns
         --------
-        List[:class:`twitchio.Poll`]
+        list[:class:`twitchio.Poll`]
         """
 
         data = await self._http.post_poll(
@@ -937,7 +937,7 @@ class UserBan(PartialUser):  # TODO will probably rework this
     def __init__(self, http: HTTPHandler, data: dict):
         super(UserBan, self).__init__(http, id=data["user_id"], name=data["user_login"])
         self.created_at: datetime.datetime = parse_timestamp(data["created_at"])
-        self.expires_at: Optional[datetime.datetime] = (
+        self.expires_at: datetime.datetime | None = (
             parse_timestamp(data["expires_at"]) if data["expires_at"] else None
         )
         self.reason: str = data["reason"]
@@ -962,7 +962,7 @@ class SearchUser(PartialUser):
         self.language: str = data["broadcaster_language"]
         self.live: bool = data["is_live"]
         self.started_at = datetime.datetime.strptime(data["started_at"], "%Y-%m-%dT%H:%M:%SZ") if self.live else None
-        self.tag_ids: List[str] = data["tag_ids"]
+        self.tag_ids: list[str] = data["tag_ids"]
 
 
 class User(PartialUser):
@@ -995,7 +995,7 @@ class User(PartialUser):
         self.offline_image: str = data["offline_image_url"]
         self.view_count: int = data["view_count"]
         self.created_at = parse_timestamp(data["created_at"])
-        self.email: Optional[str] = data.get("email")
+        self.email: str | None = data.get("email")
         self._cached_rewards = None
 
     def __repr__(self) -> str:
@@ -1012,7 +1012,7 @@ class BitsLeaderboard:
         The time the leaderboard started.
     ended_at: :class`datetime.datetime`
         The time the leaderboard ended.
-    leaders: List[:class:`BitLeaderboardUser`]
+    leaders: list[:class:`BitLeaderboardUser`]
         The current leaders of the Leaderboard.
     """
 
@@ -1089,7 +1089,7 @@ class CheerEmote:
     def __init__(self, http: HTTPHandler, data: dict):
         self._http = http
         self.prefix: str = data["prefix"]
-        self.tiers: List[CheerEmoteTier] = [CheerEmoteTier(x) for x in data["tiers"]]
+        self.tiers: list[CheerEmoteTier] = [CheerEmoteTier(x) for x in data["tiers"]]
         self.type: str = data["type"]
         self.order: str = data["order"]
         self.last_updated: datetime.datetime = parse_timestamp(data["last_updated"])
@@ -1219,7 +1219,7 @@ class HypeTrainEvent:
         The last contribution to this Hype Train.
     level: :class:`int`
         The level reached on this Hype Train (1-5).
-    top_contributions: List[:class:`HypeTrainContribution`]
+    top_contributions: list[:class:`HypeTrainContribution`]
         The top contributors to the Hype Train.
     contributions_total: :class:`int`
         The total score towards completing the goal.
@@ -1258,7 +1258,7 @@ class HypeTrainEvent:
             http, data["event_data"]["last_contribution"]
         )
         self.level: int = data["event_data"]["level"]
-        self.top_contributions: List[HypeTrainContribution] = [
+        self.top_contributions: list[HypeTrainContribution] = [
             HypeTrainContribution(http, x) for x in data["event_data"]["top_contributions"]
         ]
         self.contributions_total: int = data["event_data"]["total"]
@@ -1296,20 +1296,20 @@ class BanEvent:
 
     __slots__ = "id", "type", "timestamp", "version", "broadcaster", "user", "expires_at", "moderator", "reason"
 
-    def __init__(self, http: HTTPHandler, data: dict, broadcaster: Optional[Union[PartialUser, User]]) -> None:
+    def __init__(self, http: HTTPHandler, data: dict, broadcaster: PartialUser | User | None) -> None:
         self.id: str = data["id"]
         self.type: str = data["event_type"]
         self.timestamp: datetime.datetime = parse_timestamp(data["event_timestamp"])
         self.version: float = float(data["version"])
         self.reason: str = data["event_data"]["reason"]
-        self.broadcaster: Union[User, PartialUser] = broadcaster or PartialUser(
+        self.broadcaster: User | PartialUser = broadcaster or PartialUser(
             http, data["event_data"]["broadcaster_id"], data["event_data"]["broadcaster_name"]
         )
         self.user: PartialUser = PartialUser(http, data["event_data"]["user_id"], data["event_data"]["user_name"])
         self.moderator: PartialUser = PartialUser(
             http, data["event_data"]["moderator_id"], data["event_data"]["moderator_name"]
         )
-        self.expires_at: Optional[datetime.datetime] = (
+        self.expires_at: datetime.datetime | None = (
             parse_timestamp(data["event_data"]["expires_at"]) if data["event_data"]["expires_at"] else None
         )
 
@@ -1337,11 +1337,11 @@ class FollowEvent:
         self,
         http: HTTPHandler,
         data: dict,
-        from_: Optional[Union[User, PartialUser]] = None,
-        to: Optional[Union[User, PartialUser]] = None,
+        from_: User | PartialUser | None = None,
+        to: User | PartialUser | None = None,
     ) -> None:
-        self.from_user: Union[User, PartialUser] = from_ or PartialUser(http, data["from_id"], data["from_name"])
-        self.to_user: Union[User, PartialUser] = to or PartialUser(http, data["to_id"], data["to_name"])
+        self.from_user: User | PartialUser = from_ or PartialUser(http, data["from_id"], data["from_name"])
+        self.to_user: User | PartialUser = to or PartialUser(http, data["to_id"], data["to_name"])
         self.followed_at: datetime.datetime = parse_timestamp(data["followed_at"])
 
     def __repr__(self) -> str:
@@ -1372,13 +1372,13 @@ class SubscriptionEvent:
         self,
         http: HTTPHandler,
         data: dict,
-        broadcaster: Optional[Union[User, PartialUser]] = None,
-        user: Optional[Union[User, PartialUser]] = None,
+        broadcaster: User | PartialUser | None = None,
+        user: User | PartialUser | None = None,
     ):
-        self.broadcaster: Union[User, PartialUser] = broadcaster or PartialUser(
+        self.broadcaster: User | PartialUser = broadcaster or PartialUser(
             http, data["broadcaster_id"], data["broadcaster_name"]
         )
-        self.user: Union[User, PartialUser] = user or PartialUser(http, data["user_id"], data["user_name"])
+        self.user: User | PartialUser = user or PartialUser(http, data["user_id"], data["user_name"])
         self.tier: int = round(int(data["tier"]) / 1000)
         self.plan_name: str = data["plan_name"]
         self.gift: bool = data["is_gift"]
@@ -1415,7 +1415,7 @@ class Marker:
         self.created_at: datetime.datetime = parse_timestamp(data["created_at"])
         self.description: str = data["description"]
         self.position: int = data["position_seconds"]
-        self.url: Optional[str] = data.get("URL")
+        self.url: str | None = data.get("URL")
 
     def __repr__(self) -> str:
         return f"<Marker id={self.id} created_at={self.created_at} position={self.position} url={self.url}>"
@@ -1429,7 +1429,7 @@ class VideoMarkers:
     -----------
     id: :class:`str`
         The video id.
-    markers: List[:class:`Marker`]
+    markers: list[:class:`Marker`]
         The markers contained in the video.
     """
 
@@ -1437,7 +1437,7 @@ class VideoMarkers:
 
     def __init__(self, data: dict) -> None:
         self.id: str = data["video_id"]
-        self.markers: List[Marker] = [Marker(d) for d in data["markers"]]
+        self.markers: list[Marker] = [Marker(d) for d in data["markers"]]
 
     def __repr__(self) -> str:
         return f"<VideoMarkers id={self.id}>"
@@ -1507,12 +1507,12 @@ class ModEvent:
 
     __slots__ = "id", "type", "timestamp", "version", "broadcaster", "user"
 
-    def __init__(self, http: HTTPHandler, data: dict, broadcaster: Union[PartialUser, User]):
+    def __init__(self, http: HTTPHandler, data: dict, broadcaster: PartialUser | User):
         self.id: str = data["id"]
         self.type = ModEventEnum(value=data["event_type"])
         self.timestamp = parse_timestamp(data["event_timestamp"])
         self.version: str = data["version"]
-        self.broadcaster: Union[PartialUser, User] = broadcaster
+        self.broadcaster: PartialUser | User = broadcaster
         self.user: PartialUser = PartialUser(http, data["event_data"]["user_id"], data["event_data"]["user_name"])
 
     def __repr__(self) -> str:
@@ -1535,12 +1535,12 @@ class AutomodCheckMessage:
 
     __slots__ = "id", "text", "user_id"
 
-    def __init__(self, id: str, text: str, user: Union[PartialUser, int]):
+    def __init__(self, id: str, text: str, user: PartialUser | int):
         self.id: str = id
         self.text: str = text
         self.user_id: int = user.id if isinstance(user, PartialUser) else user
 
-    def _to_dict(self) -> Dict[str, Union[str, int]]:
+    def _to_dict(self) -> dict[str, str | int]:
         return {"msg_id": self.id, "msg_text": self.text, "user_id": str(self.user_id)}
 
     def __repr__(self) -> str:
@@ -1596,7 +1596,7 @@ class Extension:
         return f"<Extension id={self.id} version={self.version} active={self.active}>"
 
     @classmethod
-    def new(cls, active: bool, version: str, id: str, x: Optional[int] = None, y: Optional[int] = None) -> Extension:
+    def new(cls, active: bool, version: str, id: str, x: int | None = None, y: int | None = None) -> Extension:
         self = cls.__new__(cls)
         self.active = active
         self.version = version
@@ -1629,7 +1629,7 @@ class MaybeActiveExtension(Extension):
         Name of the extension.
     can_activate: :class:`bool`
         Indicates whether the extension is configured such that it can be activated.
-    types: List[:class:`str`]
+    types: list[:class:`str`]
         Types for which the extension can be activated.
     """
 
@@ -1640,7 +1640,7 @@ class MaybeActiveExtension(Extension):
         self.version: str = data["version"]
         self.name: str = data["name"]
         self.can_activate: bool = data["can_activate"]
-        self.types: List[str] = data["type"]
+        self.types: list[str] = data["type"]
 
     def __repr__(self) -> str:
         return f"<MaybeActiveExtension id={self.id} version={self.version} name={self.name}>"
@@ -1670,11 +1670,11 @@ class ActiveExtension(Extension):
 
     def __init__(self, data) -> None:
         self.active: bool = data["active"]
-        self.id: Optional[str] = data.get("id", None)
-        self.version: Optional[str] = data.get("version", None)
-        self.name: Optional[str] = data.get("name", None)
-        self.x: Optional[int] = data.get("x", None)  # x and y only show for component extensions.
-        self.y: Optional[int] = data.get("y", None)
+        self.id: str | None = data.get("id", None)
+        self.version: str | None = data.get("version", None)
+        self.name: str | None = data.get("name", None)
+        self.x: int | None = data.get("x", None)  # x and y only show for component extensions.
+        self.y: int | None = data.get("y", None)
 
     def __repr__(self) -> str:
         return f"<ActiveExtension id={self.id} version={self.version} name={self.name}>"
@@ -1686,11 +1686,11 @@ class ExtensionBuilder:
 
     Attributes
     -----------
-    panels: List[:class:`~twitchio.Extension`]
+    panels: list[:class:`~twitchio.Extension`]
         List of panels to update for an extension.
-    overlays: List[:class:`~twitchio.Extension`]
+    overlays: list[:class:`~twitchio.Extension`]
         List of overlays to update for an extension.
-    components: List[:class:`~twitchio.Extension`]
+    components: list[:class:`~twitchio.Extension`]
         List of components to update for an extension.
     """
 
@@ -1698,13 +1698,13 @@ class ExtensionBuilder:
 
     def __init__(
         self,
-        panels: Optional[List[Extension]] = None,
-        overlays: Optional[List[Extension]] = None,
-        components: Optional[List[Extension]] = None,
+        panels: list[Extension] | None = None,
+        overlays: list[Extension] | None = None,
+        components: list[Extension] | None = None,
     ) -> None:
-        self.panels: List[Extension] = panels or []
-        self.overlays: List[Extension] = overlays or []
-        self.components: List[Extension] = components or []
+        self.panels: list[Extension] = panels or []
+        self.overlays: list[Extension] = overlays or []
+        self.components: list[Extension] = components or []
 
     def _to_dict(self) -> ExtensionBuilderType:
         d: ExtensionBuilderType = {
@@ -1766,7 +1766,7 @@ class Video:
         "duration",
     )
 
-    def __init__(self, http: HTTPHandler, data: dict, user: Optional[Union[PartialUser, User]] = None) -> None:
+    def __init__(self, http: HTTPHandler, data: dict, user: PartialUser | User | None = None) -> None:
         self._http = http
         self.id: int = int(data["id"])
         self.user = user or PartialUser(http, data["user_id"], data["user_name"])
@@ -1808,7 +1808,7 @@ class Tag:
         An ID that identifies the tag.
     auto: :class:`bool`
         Indicates whether the tag is an automatic tag.
-    localization_names: Dict[:class:`str`, :class:`str`]
+    localization_names: dict[:class:`str`, :class:`str`]
         A dictionary that contains the localized names of the tag.
     localization_descriptions: :class:`str`
         A dictionary that contains the localized descriptions of the tag.
@@ -1819,8 +1819,8 @@ class Tag:
     def __init__(self, http: HTTPHandler, data: dict) -> None:
         self.id: str = data["tag_id"]
         self.auto: bool = data["is_auto"]
-        self.localization_names: Dict[str, str] = data["localization_names"]
-        self.localization_descriptions: Dict[str, str] = data["localization_descriptions"]
+        self.localization_names: dict[str, str] = data["localization_names"]
+        self.localization_descriptions: dict[str, str] = data["localization_descriptions"]
 
     def __repr__(self) -> str:
         return f"<Tag id={self.id}>"
@@ -1877,7 +1877,7 @@ class Stream:
         Language of the channel.
     thumbnail_url: :class:`str`
         Thumbnail URL of the stream.
-    tag_ids: List[:class:`str`]
+    tag_ids: list[:class:`str`]
         Tag IDs that apply to the stream.
     is_mature: :class:`bool`
         Indicates whether the stream is intended for mature audience.
@@ -1909,7 +1909,7 @@ class Stream:
         self.started_at = parse_timestamp(data["started_at"])
         self.language: str = data["language"]
         self.thumbnail_url: str = data["thumbnail_url"]
-        self.tag_ids: List[str] = data["tag_ids"]
+        self.tag_ids: list[str] = data["tag_ids"]
         self.is_mature: bool = data["is_mature"]
 
     def __repr__(self) -> str:
@@ -1964,7 +1964,7 @@ class Prediction:
         Title for the Prediction.
     winning_outcome_id: :class:`str`
         ID of the winning outcome
-    outcomes: List[:class:`~twitchio.PredictionOutcome`]
+    outcomes: list[:class:`~twitchio.PredictionOutcome`]
         List of possible outcomes for the Prediction.
     prediction_window: :class:`int`
         Total duration for the Prediction (in seconds).
@@ -1996,12 +1996,12 @@ class Prediction:
         self.prediction_id: str = data["id"]
         self.title: str = data["title"]
         self.winning_outcome_id: str = data["winning_outcome_id"]
-        self.outcomes: List[PredictionOutcome] = [PredictionOutcome(http, x) for x in data["outcomes"]]
+        self.outcomes: list[PredictionOutcome] = [PredictionOutcome(http, x) for x in data["outcomes"]]
         self.prediction_window: int = data["prediction_window"]
         self.prediction_status: str = data["status"]
         self.created_at: datetime.datetime = parse_timestamp(data["created_at"])
-        self.ended_at: Optional[datetime.datetime] = data.get("ended_at") and parse_timestamp(data["ended_at"])
-        self.locked_at: Optional[datetime.datetime] = data.get("locked_at") and parse_timestamp(data["locked_at"])
+        self.ended_at: datetime.datetime | None = data.get("ended_at") and parse_timestamp(data["ended_at"])
+        self.locked_at: datetime.datetime | None = data.get("locked_at") and parse_timestamp(data["locked_at"])
 
     def __repr__(self) -> str:
         return f"<Prediction user={self.user} prediction_id={self.prediction_id} winning_outcome_id={self.winning_outcome_id} title={self.title}>"
@@ -2048,7 +2048,7 @@ class PredictionOutcome:
         Color for the outcome.
     users: :class:`int`
         Number of unique uesrs that chose the outcome.
-    top_predictors: List[:class:`~twitchio.Predictor`]
+    top_predictors: list[:class:`~twitchio.Predictor`]
         List of the top predictors. Could be None.
     """
 
@@ -2060,7 +2060,7 @@ class PredictionOutcome:
         self.channel_points: int = data["channel_points"]
         self.color: str = data["color"]
         self.users: int = data["users"]
-        self.top_predictors: Optional[List[Predictor]]
+        self.top_predictors: list[Predictor] | None
 
         if data["top_predictors"]:
             self.top_predictors = [Predictor(http, x) for x in data["top_predictors"]]
@@ -2082,7 +2082,7 @@ class Schedule:
 
     Attributes
     -----------
-    segments: List[:class:`~twitchio.ScheduleSegment`]
+    segments: list[:class:`~twitchio.ScheduleSegment`]
         List of segments of a channel's stream schedule.
     user: :class:`~twitchio.PartialUser`
         The user of the channel associated to the schedule.
@@ -2093,11 +2093,11 @@ class Schedule:
     __slots__ = ("segments", "user", "vacation")
 
     def __init__(self, http: HTTPHandler, data: dict) -> None:
-        self.segments: List[ScheduleSegment] = (
+        self.segments: list[ScheduleSegment] = (
             [ScheduleSegment(d) for d in data["data"]["segments"]] if data["data"]["segments"] else []
         )
         self.user: PartialUser = PartialUser(http, data["data"]["broadcaster_id"], data["data"]["broadcaster_login"])
-        self.vacation: Optional[ScheduleVacation] = (
+        self.vacation: ScheduleVacation | None = (
             ScheduleVacation(data["data"]["vacation"]) if data["data"]["vacation"] else None
         )
 
@@ -2134,10 +2134,10 @@ class ScheduleSegment:
         self.start_time: datetime.datetime = parse_timestamp(data["start_time"])
         self.end_time: datetime.datetime = parse_timestamp(data["end_time"])
         self.title: str = data["title"]
-        self.canceled_until: Optional[datetime.datetime] = (
+        self.canceled_until: datetime.datetime | None = (
             parse_timestamp(data["canceled_until"]) if data["canceled_until"] else None
         )
-        self.category: Optional[ScheduleCategory] = ScheduleCategory(data["category"]) if data["category"] else None
+        self.category: ScheduleCategory | None = ScheduleCategory(data["category"]) if data["category"] else None
         self.is_recurring: bool = data["is_recurring"]
 
     def __repr__(self) -> str:
@@ -2194,7 +2194,7 @@ class Team:
 
     Attributes
     -----------
-    users: List[:class:`~twitchio.PartialUser`]
+    users: list[:class:`~twitchio.PartialUser`]
         List of users in the specified Team.
     background_image_url: :class:`str`
         URL for the Team background image.
@@ -2230,7 +2230,7 @@ class Team:
     )
 
     def __init__(self, http: HTTPHandler, data: dict) -> None:
-        self.users: List[PartialUser] = [PartialUser(http, x["user_id"], x["user_login"]) for x in data["users"]]
+        self.users: list[PartialUser] = [PartialUser(http, x["user_id"], x["user_login"]) for x in data["users"]]
         self.background_image_url: str = data["background_image_url"]
         self.banner: str = data["banner"]
         self.created_at: datetime.datetime = parse_timestamp(data["created_at"].split(" ")[0])
@@ -2314,7 +2314,7 @@ class Poll:
         User of the broadcaster.
     title: :class:`str`
         Question displayed for the poll.
-    choices: List[:class:`~twitchio.PollChoice`]
+    choices: list[:class:`~twitchio.PollChoice`]
         The poll choices.
     bits_voting_enabled: :class:`bool`
         Indicates if Bits can be used for voting.
@@ -2351,13 +2351,13 @@ class Poll:
         self.id: str = data["id"]
         self.broadcaster: PartialUser = PartialUser(http, data["broadcaster_id"], data["broadcaster_login"])
         self.title: str = data["title"]
-        self.choices: List[PollChoice] = [PollChoice(d) for d in data["choices"]] if data["choices"] else []
+        self.choices: list[PollChoice] = [PollChoice(d) for d in data["choices"]] if data["choices"] else []
         self.channel_points_voting_enabled: bool = data["channel_points_voting_enabled"]
         self.channel_points_per_vote: int = data["channel_points_per_vote"]
         self.status: str = data["status"]
         self.duration: int = data["duration"]
         self.started_at: datetime.datetime = parse_timestamp(data["started_at"])
-        self.ended_at: Optional[datetime.datetime]
+        self.ended_at: datetime.datetime | None
         try:
             self.ended_at = parse_timestamp(data["ended_at"])
         except KeyError:
@@ -2491,14 +2491,14 @@ class ChatSettings:
         self.broadcaster = PartialUser(http, data["broadcaster_id"], None)
         self.emote_mode: bool = data["emote_mode"]
         self.follower_mode: bool = data["follower_mode"]
-        self.follower_mode_duration: Optional[int] = data.get("follower_mode_duration")
+        self.follower_mode_duration: int | None = data.get("follower_mode_duration")
         self.slow_mode: bool = data["slow_mode"]
-        self.slow_mode_wait_time: Optional[int] = data.get("slow_mode_wait_time")
+        self.slow_mode_wait_time: int | None = data.get("slow_mode_wait_time")
         self.subscriber_mode: bool = data["subscriber_mode"]
         self.unique_chat_mode: bool = data["unique_chat_mode"]
-        self.non_moderator_chat_delay: Optional[bool] = data.get("non_moderator_chat_delay")
-        self.non_moderator_chat_delay_duration: Optional[int] = data.get("non_moderator_chat_delay_duration")
-        self.moderator: Optional[PartialUser]
+        self.non_moderator_chat_delay:bool | None = data.get("non_moderator_chat_delay")
+        self.non_moderator_chat_delay_duration: int | None = data.get("non_moderator_chat_delay_duration")
+        self.moderator: PartialUser | None
         try:
             self.moderator = PartialUser(http, data["moderator_id"], None)
         except KeyError:

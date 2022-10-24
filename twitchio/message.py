@@ -20,7 +20,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-from typing import Optional, cast
+from typing import cast
 
 from .channel import Channel
 from .chatter import PartialChatter
@@ -49,14 +49,14 @@ class Message:
 
     __slots__ = ("_tags", "_id", "_tid", "content", "channel", "author", "_badges", "echo", "raw", "timestamp")
 
-    def __init__(self, payload: IRCPayload, *, channel: Optional[Channel], chatter: PartialChatter, echo: bool = False):
+    def __init__(self, payload: IRCPayload, *, channel: Channel | None, chatter: PartialChatter, echo: bool = False):
         self._tags = payload.tags
         self._badges: dict = payload.badges
 
         self._id: str = self._tags.get("id") or self._tags.get("message-id")  # type: ignore
-        self._tid: Optional[str] = self._tags.get("thread-id")
+        self._tid: str | None = self._tags.get("thread-id")
         self.content: str = cast(str, payload.message)
-        self.channel: Optional[Channel] = channel
+        self.channel: Channel | None = channel
         self.author: PartialChatter = chatter
 
         self.echo: bool = echo
@@ -86,7 +86,7 @@ class Message:
         return self._id
 
     @property
-    def thread_id(self) -> Optional[str]:
+    def thread_id(self) -> str | None:
         """The Thread ID associated with this message. Could be None."""
         return self._tid
 

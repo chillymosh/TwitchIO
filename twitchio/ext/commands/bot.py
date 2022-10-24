@@ -5,7 +5,7 @@ import importlib.util
 import sys
 import traceback
 import types
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Type, Union
+from typing import Any, Callable, Coroutine, Type
 
 from twitchio import Client, Message
 
@@ -17,16 +17,16 @@ from .errors import *
 
 class Bot(Client):
     def __init__(
-        self, prefix: Union[str, List, Callable[..., str], Callable[..., Coroutine[Any, Any, str]]], *args, **kwargs
+        self, prefix: str | list | Callable[..., str] | Callable[..., Coroutine[Any, Any, str]], *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
 
-        self.__commands: Dict[str, Command] = {}
-        self.__components: Dict[str, Component] = {}
-        self.__extensions: Dict[str, types.ModuleType] = {}
+        self.__commands: dict[str, Command] = {}
+        self.__components: dict[str, Component] = {}
+        self.__extensions: dict[str, types.ModuleType] = {}
 
         self._unassigned_prefixes = prefix
-        self._prefixes: List[str] = []
+        self._prefixes: list[str] = []
 
         self._in_context: bool = False
 
@@ -56,19 +56,19 @@ class Bot(Client):
         await super().start()
 
     @property
-    def prefixes(self) -> List[str]:
+    def prefixes(self) -> list[str]:
         return self._prefixes.copy()
 
     @property
-    def commands(self) -> Dict[str, Command]:
+    def commands(self) -> dict[str, Command]:
         return self.__commands.copy()
 
     @property
-    def components(self) -> Dict[str, Component]:
+    def components(self) -> dict[str, Component]:
         return self.__components.copy()
 
     @property
-    def extensions(self) -> Dict[str, types.ModuleType]:
+    def extensions(self) -> dict[str, types.ModuleType]:
         return self.__extensions.copy()
 
     async def _prepare_prefixes(self) -> None:
@@ -151,7 +151,7 @@ class Bot(Client):
 
         self.__components[component.__component_name__] = component
 
-    async def remove_component(self, component: Union[str, Component]) -> None:
+    async def remove_component(self, component: str | Component) -> None:
         if isinstance(component, str):
             try:
                 component = self.__components[component]
@@ -173,7 +173,7 @@ class Bot(Client):
 
         del self.__components[component.__component_name__]
 
-    def _get_extension_name(self, extension: str, package: Optional[str]) -> str:
+    def _get_extension_name(self, extension: str, package: str | None) -> str:
         try:
             return importlib.util.resolve_name(extension, package)
         except ImportError as e:
@@ -184,7 +184,7 @@ class Bot(Client):
             if component.__module__ == name or component.__module__.startswith(f"{name}."):
                 await self.remove_component(component)
 
-    async def load_extension(self, extension: str, package: Optional[str] = None) -> None:
+    async def load_extension(self, extension: str, package: str | None = None) -> None:
         name = self._get_extension_name(extension, package)
 
         if name in self.__extensions:
@@ -222,7 +222,7 @@ class Bot(Client):
 
         self.__extensions[name] = module
 
-    async def unload_extension(self, extension: str, package: Optional[str] = None) -> None:
+    async def unload_extension(self, extension: str, package: str | None = None) -> None:
         name = self._get_extension_name(extension, package)
 
         if name not in self.__extensions:
@@ -251,7 +251,7 @@ class Bot(Client):
             del self.__extensions[name]
             del module
 
-    async def reload_extension(self, extension: str, package: Optional[str] = None):
+    async def reload_extension(self, extension: str, package: str | None = None):
         name = self._get_extension_name(extension, package)
 
         await self.unload_extension(name)

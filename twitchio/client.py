@@ -26,7 +26,7 @@ import asyncio
 import inspect
 import sys
 import traceback
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Coroutine
 
 from twitchio.http import HTTPAwaitableAsyncIterator, HTTPHandler
 
@@ -44,7 +44,7 @@ from .websocket import Websocket
 if TYPE_CHECKING:
     from ext.eventsub import EventSubClient
 
-_initial_channels_T = Optional[Union[List[str], Tuple[str], Callable[[], List[str]], Coroutine[Any, Any, None]]]
+_initial_channels_T = list[str] | tuple[str] | Callable[[], list[str]] | Coroutine[Any, Any, None] | None
 
 __all__ = ("Client",)
 
@@ -65,7 +65,7 @@ class Client:
         Whether or not your bot is verified or not. Defaults to False.
     join_timeout: Optional[:class:`float`]
         An optional float to use to timeout channel joins. Defaults to 15.0.
-    initial_channels: Optional[Union[List[:class:`str`], Tuple[:class:`str`], :class:`callable`, :class:`coroutine`]]
+    initial_channels: Optional[Union[list[:class:`str`], tuple[:class:`str`], :class:`callable`, :class:`coroutine`]]
         An optional list or tuple of channels to join on bot start. This may be a callable or coroutine,
         but must return a :clas:`list` or :class:`tuple`.
     shard_limit: :class:`int`
@@ -79,13 +79,13 @@ class Client:
     def __init__(
         self,
         token_handler: BaseTokenHandler,
-        heartbeat: Optional[float] = 30.0,
-        verified: Optional[bool] = False,
-        join_timeout: Optional[float] = 15.0,
+        heartbeat: float | None = 30.0,
+        verified: bool | None = False,
+        join_timeout: float | None = 15.0,
         initial_channels: _initial_channels_T = None,
         shard_limit: int = 100,
-        cache_size: Optional[int] = None,
-        eventsub: Optional[EventSubClient] = None,
+        cache_size: int | None = None,
+        eventsub: EventSubClient | None = None,
         **kwargs,
     ):
         self._token_handler: BaseTokenHandler = token_handler._post_init(self)
@@ -102,14 +102,14 @@ class Client:
         self._limiter = IRCRateLimiter(status="verified" if verified else "user", bucket="joins")
         self._http = HTTPHandler(None, self._token_handler, client=self, **kwargs)
 
-        self._eventsub: Optional[EventSubClient] = None
+        self._eventsub: EventSubClient | None = None
         if eventsub:
             self._eventsub = eventsub
             self._eventsub._client = self
             self._eventsub._client_ready.set()
 
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._kwargs: Dict[str, Any] = kwargs
+        self.loop: asyncio.AbstractEventLoop | None = None
+        self._kwargs: dict[str, Any] = kwargs
 
         self._is_closed = False
         self._has_acquired = False
@@ -217,12 +217,12 @@ class Client:
         self._is_closed = True
 
     @property
-    def shards(self) -> Dict[int, ShardInfo]:
+    def shards(self) -> dict[int, ShardInfo]:
         """A dict of shard number to :class:`~twitchio.ShardInfo`"""
         return self._shards
 
     @property
-    def nick(self) -> Optional[str]:
+    def nick(self) -> str | None:
         """The bots nickname.
 
         This may be None if a shard has not become ready, or you have entered invalid credentials.
@@ -231,7 +231,7 @@ class Client:
 
     nickname = nick
 
-    def get_channel(self, name: str, /) -> Optional[Channel]:
+    def get_channel(self, name: str, /) -> Channel | None:
         """Method which returns a channel from cache if it exits.
 
         Could be None if the channel is not in cache.
@@ -258,7 +258,7 @@ class Client:
 
         return channel
 
-    def get_message(self, id_: str, /) -> Optional[Message]:
+    def get_message(self, id_: str, /) -> Message | None:
         """Method which returns a message from cache if it exists.
 
         Could be ``None`` if the message is not in cache.
@@ -284,24 +284,24 @@ class Client:
         return message
 
     async def fetch_users(
-        self, names: Optional[List[str]] = None, ids: Optional[List[int]] = None, target: Optional[PartialUser] = None
-    ) -> List[User]:
+        self, names: list[str] | None = None, ids: list[int] | None = None, target: PartialUser | None = None
+    ) -> list[User]:
         """|coro|
 
         Fetches users from twitch. You can provide any combination of up to 100 names and ids, but you must pass at least 1.
 
         Parameters
         -----------
-        names: Optional[List[:class:`str`]]
+        names: Optional[list[:class:`str`]]
             A list of usernames
-        ids: Optional[List[Union[:class:`str`, :class:`int`]]
+        ids: Optional[list[Union[:class:`str`, :class:`int`]]
             A list of IDs
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
 
         Returns
         --------
-        List[:class:`~twitchio.User`]
+        list[:class:`~twitchio.User`]
         """
         if not names and not ids:
             raise ValueError("No names or ids passed to fetch_users")
@@ -312,7 +312,7 @@ class Client:
         return await data
 
     async def fetch_user(
-        self, name: Optional[str] = None, id: Optional[int] = None, target: Optional[PartialUser] = None
+        self, name: str | None = None, id: int | None = None, target: PartialUser | None = None
     ) -> User:
         """|coro|
 
@@ -346,9 +346,7 @@ class Client:
 
         return resp[0]
 
-    async def fetch_cheermotes(
-        self, user_id: Optional[int] = None, target: Optional[PartialUser] = None
-    ) -> List[CheerEmote]:
+    async def fetch_cheermotes(self, user_id: int | None = None, target: PartialUser | None = None) -> list[CheerEmote]:
         """|coro|
 
 
@@ -363,14 +361,14 @@ class Client:
 
         Returns
         --------
-            List[:class:`twitchio.CheerEmote`]
+            list[:class:`twitchio.CheerEmote`]
         """
         data = await self._http.get_cheermotes(str(user_id) if user_id else None, target=target)
         return [CheerEmote(self._http, x) for x in data["data"]]
 
     async def search_channels(
-        self, query: str, *, live_only=False, target: Optional[PartialUser] = None
-    ) -> List[SearchUser]:
+        self, query: str, *, live_only=False, target: PartialUser | None = None
+    ) -> list[SearchUser]:
         """|coro|
 
         Searches channels for the given query
@@ -384,7 +382,7 @@ class Client:
 
         Returns
         --------
-            List[:class:`twitchio.SearchUser`]
+            list[:class:`twitchio.SearchUser`]
         """
 
         data: HTTPAwaitableAsyncIterator[SearchUser] = self._http.get_search_channels(
@@ -394,7 +392,7 @@ class Client:
 
         return await data
 
-    async def search_categories(self, query: str, target: Optional[PartialUser] = None) -> List[Game]:
+    async def search_categories(self, query: str, target: PartialUser | None = None) -> list[Game]:
         """|coro|
 
         Searches twitches categories
@@ -408,7 +406,7 @@ class Client:
 
         Returns
         --------
-            List[:class:`twitchio.Game`]
+            list[:class:`twitchio.Game`]
         """
 
         data: HTTPAwaitableAsyncIterator[Game] = self._http.get_search_categories(query=query, target=target)
@@ -417,21 +415,21 @@ class Client:
         return await data
 
     async def fetch_channel_info(
-        self, broadcaster_ids: List[int], target: Optional[PartialUser] = None
-    ) -> List[ChannelInfo]:
+        self, broadcaster_ids: list[int], target: PartialUser | None = None
+    ) -> list[ChannelInfo]:
         """|coro|
 
         Retrieve channel information from the API.
 
         Parameters
         -----------
-        broadcaster_ids: List[str]
+        broadcaster_ids: list[str]
             A list of channel IDs to request from API. Returns empty list if no channel was found.
             You may specify a maximum of 100 IDs.
 
         Returns
         --------
-            List[:class:`twitchio.ChannelInfo`]
+            list[:class:`twitchio.ChannelInfo`]
         """
 
         try:
@@ -443,7 +441,7 @@ class Client:
         except HTTPException as e:
             raise HTTPException("Incorrect channel ID provided") from e
 
-    async def fetch_clips(self, ids: List[str], target: Optional[PartialUser] = None) -> List[Clip]:
+    async def fetch_clips(self, ids: list[str], target: PartialUser | None = None) -> list[Clip]:
         """|coro|
 
         Fetches clips by clip id.
@@ -451,14 +449,14 @@ class Client:
 
         Parameters
         -----------
-        ids: List[:class:`str`]
+        ids: list[:class:`str`]
             A list of clip ids
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
 
         Returns
         --------
-            List[:class:`twitchio.Clip`]
+            list[:class:`twitchio.Clip`]
         """
 
         data: HTTPAwaitableAsyncIterator[Clip] = self._http.get_clips(ids=ids, target=target)
@@ -468,14 +466,14 @@ class Client:
 
     async def fetch_videos(
         self,
-        ids: Optional[List[int]] = None,
-        game_id: Optional[int] = None,
-        period: Optional[str] = "all",
-        sort: Optional[str] = "time",
-        type: Optional[str] = "all",
-        language: Optional[str] = None,
-        target: Optional[PartialUser] = None,
-    ) -> List[Video]:
+        ids: list[int] | None = None,
+        game_id: int | None = None,
+        period: str | None = "all",
+        sort: str | None = "time",
+        type: str | None = "all",
+        language: str | None = None,
+        target: PartialUser | None = None,
+    ) -> list[Video]:
         """|coro|
 
         Fetches videos by id or game id.
@@ -483,7 +481,7 @@ class Client:
 
         Parameters
         -----------
-        ids: Optional[List[:class:`int`]]
+        ids: Optional[list[:class:`int`]]
             A list of video ids up to 100.
         game_id: Optional[:class:`int`]
             A game to fetch videos from. Limit 1.
@@ -504,7 +502,7 @@ class Client:
 
         Returns
         --------
-            List[:class:`twitchio.Video`]
+            list[:class:`twitchio.Video`]
         """
 
         data: HTTPAwaitableAsyncIterator[Video] = self._http.get_videos(
@@ -514,30 +512,28 @@ class Client:
 
         return await data
 
-    async def fetch_chatters_colors(
-        self, user_ids: List[int], target: Optional[PartialUser] = None
-    ) -> List[ChatterColor]:
+    async def fetch_chatters_colors(self, user_ids: list[int], target: PartialUser | None = None) -> list[ChatterColor]:
         """|coro|
 
         Fetches the color of a chatter.
 
         Parameters
         -----------
-        user_ids: List[:class:`int`]
+        user_ids: list[:class:`int`]
             List of user ids to fetch the colors for
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
 
         Returns
         --------
-            List[:class:`twitchio.ChatterColor`]
+            list[:class:`twitchio.ChatterColor`]
         """
         data = await self._http.get_user_chat_color(user_ids, target)
         return [ChatterColor(self._http, x) for x in data["data"]]
 
     async def fetch_games(
-        self, ids: Optional[List[int]] = None, names: Optional[List[str]] = None, target: Optional[PartialUser] = None
-    ) -> List[Game]:
+        self, ids: list[int] | None = None, names: list[str] | None = None, target: PartialUser | None = None
+    ) -> list[Game]:
         """|coro|
 
         Fetches games by id or name.
@@ -545,16 +541,16 @@ class Client:
 
         Parameters
         -----------
-        ids: Optional[List[:class:`int`]]
+        ids: Optional[list[:class:`int`]]
             An optional list of game ids
-        names: Optional[List[:class:`str`]]
+        names: Optional[list[:class:`str`]]
             An optional list of game names
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
 
         Returns
         --------
-            List[:class:`twitchio.Game`]
+            list[:class:`twitchio.Game`]
         """
 
         data: HTTPAwaitableAsyncIterator[Game] = self._http.get_games(game_ids=ids, game_names=names, target=target)
@@ -564,25 +560,25 @@ class Client:
 
     async def fetch_streams(
         self,
-        user_ids: Optional[List[int]] = None,
-        game_ids: Optional[List[int]] = None,
-        user_logins: Optional[List[str]] = None,
-        languages: Optional[List[str]] = None,
-        target: Optional[PartialUser] = None,
-    ) -> List[Stream]:
+        user_ids: list[int] | None = None,
+        game_ids: list[int] | None = None,
+        user_logins: list[str] | None = None,
+        languages: list[str] | None = None,
+        target: PartialUser | None = None,
+    ) -> list[Stream]:
         """|coro|
 
         Fetches live streams from the helix API
 
         Parameters
         -----------
-        user_ids: Optional[List[:class:`int`]]
+        user_ids: Optional[list[:class:`int`]]
             user ids of people whose streams to fetch
-        game_ids: Optional[List[:class:`int`]]
+        game_ids: Optional[list[:class:`int`]]
             game ids of streams to fetch
-        user_logins: Optional[List[:class:`str`]]
+        user_logins: Optional[list[:class:`str`]]
             user login names of people whose streams to fetch
-        languages: Optional[List[:class:`str`]]
+        languages: Optional[list[:class:`str`]]
             language for the stream(s). ISO 639-1 or two letter code for supported stream language
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
@@ -590,7 +586,7 @@ class Client:
 
         Returns
         --------
-        List[:class:`twitchio.Stream`]
+        list[:class:`twitchio.Stream`]
         """
 
         data: HTTPAwaitableAsyncIterator[Stream] = self._http.get_streams(
@@ -604,7 +600,7 @@ class Client:
 
         return await data
 
-    async def fetch_top_games(self, target: Optional[PartialUser] = None) -> List[Game]:
+    async def fetch_top_games(self, target: PartialUser | None = None) -> list[Game]:
         """|coro|
 
         Fetches the top games from the api
@@ -616,28 +612,28 @@ class Client:
 
         Returns
         --------
-            List[:class:`twitchio.Game`]
+            list[:class:`twitchio.Game`]
         """
         data: HTTPAwaitableAsyncIterator[Game] = self._http.get_top_games(target=target)
         data.set_adapter(lambda http, data: Game(http, data))
 
         return await data
 
-    async def fetch_tags(self, ids: Optional[List[str]] = None, target: Optional[PartialUser] = None) -> List[Tag]:
+    async def fetch_tags(self, ids: list[str] | None = None, target: PartialUser | None = None) -> list[Tag]:
         """|coro|
 
         Fetches stream tags.
 
         Parameters
         -----------
-        ids: Optional[List[:class:`str`]]
+        ids: Optional[list[:class:`str`]]
             The ids of the tags to fetch
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
 
         Returns
         --------
-            List[:class:`twitchio.Tag`]
+            list[:class:`twitchio.Tag`]
         """
 
         data: HTTPAwaitableAsyncIterator[Tag] = self._http.get_stream_tags(tag_ids=ids, target=target)
@@ -646,7 +642,7 @@ class Client:
         return await data
 
     async def fetch_team(
-        self, team_name: Optional[str] = None, team_id: Optional[int] = None, target: Optional[PartialUser] = None
+        self, team_name: str | None = None, team_id: int | None = None, target: PartialUser | None = None
     ) -> Team:
         """|coro|
 
@@ -673,7 +669,7 @@ class Client:
         )
         return Team(self._http, data["data"][0])
 
-    async def delete_videos(self, target: PartialUser, ids: List[int]) -> List[int]:
+    async def delete_videos(self, target: PartialUser, ids: list[int]) -> list[int]:
         """|coro|
 
         Delete videos from the api. Returns the video ids that were successfully deleted.
@@ -683,13 +679,13 @@ class Client:
         target: Optional[:class:`~twitchio.PartialUser`]
             The target of this HTTP call. Passing a user will tell the library to put this call under the authorized token for that user, if one exists in your token handler
             ``channel:manage:videos`` scope is required
-        ids: List[:class:`int`]
+        ids: list[:class:`int`]
             A list of video ids from the channel of the oauth token to delete
 
 
         Returns
         --------
-            List[:class:`int`]
+            list[:class:`int`]
         """
         resp = []
         for chunk in [ids[x : x + 3] for x in range(0, len(ids), 3)]:
@@ -789,7 +785,7 @@ class Client:
             ...
         """
 
-    async def event_part(self, channel: Optional[Channel], chatter: PartialChatter) -> None:
+    async def event_part(self, channel: Channel | None, chatter: PartialChatter) -> None:
         """|coro|
 
         Event fired when a PART is received via Twitch.

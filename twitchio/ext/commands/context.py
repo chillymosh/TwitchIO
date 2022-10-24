@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import typing
-from typing import Optional, cast
+from typing import cast
 
 from twitchio import Channel, Message
 from twitchio.abc import Messageable
@@ -43,7 +43,7 @@ class Context(Messageable):
     def _get_command_string(self) -> str:
         return self._message_copy.content.removeprefix(cast(str, self.prefix)).split()[0]
 
-    def _get_command(self) -> Optional[Command]:
+    def _get_command(self) -> Command | None:
         if not self.is_valid:
             return None
 
@@ -56,7 +56,7 @@ class Context(Messageable):
 
         return cmd
 
-    def _get_prefix(self) -> Optional[str]:
+    def _get_prefix(self) -> str | None:
         for prefix in self.bot.prefixes:
             if self._message_copy.content.startswith(prefix):
                 return prefix
@@ -79,7 +79,7 @@ class Context(Messageable):
         return self.channel.name
 
     @property
-    def component(self) -> Optional[Component]:
+    def component(self) -> Component | None:
         return self._component
 
     async def invoke(self, *, parse_args_first: bool = True) -> None:

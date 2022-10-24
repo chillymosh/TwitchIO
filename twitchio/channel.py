@@ -21,7 +21,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import copy
-from typing import Dict, Optional
 
 from .abc import Messageable
 from .cache import Cache
@@ -36,7 +35,7 @@ class Channel(Messageable):
 
     def __init__(self, **attrs):
         super().__init__(**attrs)
-        self._id: Optional[int] = attrs.get("id")
+        self._id: int | None = attrs.get("id")
         self._chatters: Cache = Cache()
 
     def __repr__(self) -> str:
@@ -65,7 +64,7 @@ class Channel(Messageable):
         return self._name
 
     @property
-    def id(self) -> Optional[int]:
+    def id(self) -> int | None:
         """
         The channel ID.
 
@@ -76,7 +75,7 @@ class Channel(Messageable):
         return self._id and int(self._id)
 
     @property
-    def owner(self) -> Optional[PartialChatter]:
+    def owner(self) -> PartialChatter | None:
         """
         The channel owner.
 
@@ -97,7 +96,7 @@ class Channel(Messageable):
         """
         return copy.copy(self._chatters.nodes)
 
-    def get_chatter(self, name: str) -> Optional[PartialChatter]:
+    def get_chatter(self, name: str) -> PartialChatter | None:
         """Method which returns a chatter from the channel's cache.
 
         Could be ``None`` if the chatter is not in cache.

@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     bodyType = dict[str, Any] | str | None
 
 TokenHandlerT = TypeVar("TokenHandlerT", bound=BaseTokenHandler)
-ParameterType = list[tuple[str, str | None ]]
+ParameterType = list[tuple[str, str | None]]
 T = TypeVar("T")
 logger = logging.getLogger("twitchio.http")
 
@@ -208,9 +208,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if self._session:
             await self._session.close()
 
-    async def request_paginated_endpoint(
-        self, route: Route, paginator: str| None  = None, limit: int| None  = 100
-    ):
+    async def request_paginated_endpoint(self, route: Route, paginator: str | None = None, limit: int | None = 100):
         copy_route = copy.copy(route)
         if "limit" not in route.parameters:
             copy_route.parameters.add("limit", str(limit))
@@ -342,7 +340,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
     async def get_extension_analytics(
         self,
         target: PartialUser,
-        extension_id: str| None  = None,
+        extension_id: str | None = None,
         type: str | None = None,
         started_at: datetime.datetime | None = None,
         ended_at: datetime.datetime | None = None,
@@ -352,10 +350,10 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
     async def get_game_analytics(
         self,
         target: PartialUser,
-        game_id: str | None  = None,
-        type: str | None  = None,
-        started_at: datetime.datetime | None  = None,
-        ended_at: datetime.datetime | None  = None,
+        game_id: str | None = None,
+        type: str | None = None,
+        started_at: datetime.datetime | None = None,
+        ended_at: datetime.datetime | None = None,
     ):
         raise NotImplementedError  # TODO
 
@@ -363,8 +361,8 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         self,
         target: PartialUser,
         period: Literal["all", "day", "week", "month", "year"] = "all",
-        user_id: int | None  = None,
-        started_at: datetime.datetime | None  = None,
+        user_id: int | None = None,
+        started_at: datetime.datetime | None = None,
     ) -> Any:
         assert period in {"all", "day", "week", "month", "year"}
         parameters: ParameterType = [
@@ -376,14 +374,12 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         route = Route("GET", "bits/leaderboard", "", parameters=parameters, target=target, scope=["bits:read"])
         return await self.request(route)
 
-    def get_cheermotes(self, broadcaster_id: str | None  = None, target: PartialUser | None = None):
+    def get_cheermotes(self, broadcaster_id: str | None = None, target: PartialUser | None = None):
         return self.request(
             Route("GET", "bits/cheermotes", None, parameters=[("broadcaster_id", broadcaster_id)], target=target)
         )
 
-    def get_extension_transactions(
-        self, extension_id: str, ids: list[Any] | None  = None
-    ) -> HTTPAwaitableAsyncIterator:
+    def get_extension_transactions(self, extension_id: str, ids: list[Any] | None = None) -> HTTPAwaitableAsyncIterator:
         params: ParameterType = [("extension_id", extension_id)]
         if ids:
             params.extend(("id", str(id)) for id in ids)
@@ -395,13 +391,13 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: int,
         title: str,
         cost: int,
-        prompt: str | None  = None,
+        prompt: str | None = None,
         is_enabled: bool = True,
-        background_color: str | None  = None,
+        background_color: str | None = None,
         user_input_required: bool = False,
-        max_per_stream: int | None  = None,
-        max_per_user: int | None  = None,
-        global_cooldown: int | None  = None,
+        max_per_stream: int | None = None,
+        max_per_user: int | None = None,
+        global_cooldown: int | None = None,
         fufill_immediatly: bool = False,
     ) -> Any:
         params: ParameterType = [("broadcaster_id", str(broadcaster_id))]
@@ -431,7 +427,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         return self.request(Route("POST", "channel_points/custom_rewards", parameters=params, body=data, target=target))
 
     def get_rewards(
-        self, target: PartialUser, broadcaster_id: int, only_manageable: bool = False, ids: list[int] | None  = None
+        self, target: PartialUser, broadcaster_id: int, only_manageable: bool = False, ids: list[int] | None = None
     ) -> HTTPAwaitableAsyncIterator:
         params = [("broadcaster_id", str(broadcaster_id)), ("only_manageable_rewards", str(only_manageable))]
 
@@ -448,17 +444,17 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: int,
         reward_id: str,
         title: str | None = None,
-        prompt: str | None  = None,
-        cost: int | None  = None,
-        background_color: str | None  = None,
+        prompt: str | None = None,
+        cost: int | None = None,
+        background_color: str | None = None,
         enabled: bool | None = None,
         input_required: bool | None = None,
         max_per_stream_enabled: bool | None = None,
-        max_per_stream: int| None = None,
+        max_per_stream: int | None = None,
         max_per_user_per_stream_enabled: bool | None = None,
-        max_per_user_per_stream: int| None = None,
+        max_per_user_per_stream: int | None = None,
         global_cooldown_enabled: bool | None = None,
-        global_cooldown: int| None = None,
+        global_cooldown: int | None = None,
         paused: bool | None = None,
         redemptions_skip_queue: bool | None = None,
     ) -> Any:
@@ -605,7 +601,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
 
     def get_clips(
         self,
-        broadcaster_id: int| None = None,
+        broadcaster_id: int | None = None,
         game_id: str | None = None,
         ids: list[str] | None = None,
         started_at: datetime.datetime | None = None,
@@ -677,9 +673,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             )
         )
 
-    def post_automod_check(
-        self, target: PartialUser, broadcaster_id: str, msgs: list[dict[str, str | int]]
-    ) -> Any:
+    def post_automod_check(self, target: PartialUser, broadcaster_id: str, msgs: list[dict[str, str | int]]) -> Any:
         return self.request(
             Route(
                 "POST",
@@ -731,7 +725,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             params.extend(("user_id", id) for id in user_ids)
 
         return self.request_paginated_route(
-            Route("GET", "moderation/moderators/events", None, parameters=params, target=target, scope=["moderation:read"])
+            Route(
+                "GET", "moderation/moderators/events", None, parameters=params, target=target, scope=["moderation:read"]
+            )
         )
 
     def get_search_categories(self, query: str, target: PartialUser | None = None) -> HTTPAwaitableAsyncIterator:
@@ -794,9 +790,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             )
         )
 
-    def get_stream_markers(
-        self, target: PartialUser, user_id: str | None = None, video_id: str | None = None
-    ) -> Any:
+    def get_stream_markers(self, target: PartialUser, user_id: str | None = None, video_id: str | None = None) -> Any:
         return self.request(
             Route(
                 "GET",
@@ -852,7 +846,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: str,
         segment_ids: list[str] | None = None,
         start_time: datetime.datetime | None = None,
-        utc_offset: int| None = None,
+        utc_offset: int | None = None,
         first: int = 20,
     ) -> Any:
         if first > 25 or first < 1:
@@ -895,7 +889,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if tag_ids:
             params.extend(("tag_id", u) for u in tag_ids)
 
-        return self.request_paginated_route(Route("GET", "tags/streams", None, parameters=params or None, target=target))
+        return self.request_paginated_route(
+            Route("GET", "tags/streams", None, parameters=params or None, target=target)
+        )
 
     def get_channel_tags(self, broadcaster_id: str):
         return self.request(Route("GET", "streams/tags", None, parameters=[("broadcaster_id", broadcaster_id)]))
@@ -1017,9 +1013,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
     def get_webhook_subs(self) -> Any:  # TODO is this paginated?
         return self.request(Route("GET", "webhooks/subscriptions", None))
 
-    def get_teams(
-        self, team_name: str | None = None, team_id: int| None = None, target: PartialUser | None = None
-    ):
+    def get_teams(self, team_name: str | None = None, team_id: int | None = None, target: PartialUser | None = None):
         params: ParameterType
         if team_name:
             params = [("name", team_name)]
@@ -1041,7 +1035,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: str,
         target: PartialUser,
         poll_ids: list[str] | None = None,
-        first: int| None = 20,
+        first: int | None = 20,
     ) -> HTTPAwaitableAsyncIterator:
         if poll_ids and len(poll_ids) > 100:
             raise ValueError("poll_ids can only have up to 100 entries")
@@ -1064,9 +1058,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         choices,
         duration: int,
         bits_voting_enabled: bool | None = False,
-        bits_per_vote: int| None = None,
+        bits_per_vote: int | None = None,
         channel_points_voting_enabled: bool | None = False,
-        channel_points_per_vote: int| None = None,
+        channel_points_per_vote: int | None = None,
     ) -> Any:
         if len(title) > 60:
             raise ValueError("title must be less than or equal to 60 characters")
@@ -1128,13 +1122,13 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         target: PartialUser,
         emote_mode: bool | None = None,
         follower_mode: bool | None = None,
-        follower_mode_duration: int| None = None,
+        follower_mode_duration: int | None = None,
         slow_mode: bool | None = None,
-        slow_mode_wait_time: int| None = None,
+        slow_mode_wait_time: int | None = None,
         subscriber_mode: bool | None = None,
         unique_chat_mode: bool | None = None,
         non_moderator_chat_delay: bool | None = None,
-        non_moderator_chat_delay_duration: int| None = None,
+        non_moderator_chat_delay_duration: int | None = None,
     ) -> Any:
         if follower_mode_duration and follower_mode_duration > 129600:
             raise ValueError("follower_mode_duration must be below 129600")
@@ -1145,7 +1139,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if non_moderator_chat_delay_duration and non_moderator_chat_delay_duration not in {2, 4, 6}:
             raise ValueError("non_moderator_chat_delay_duration must be 2, 4 or 6")
 
-        params: ParameterType= [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
         data = {
             "emote_mode": emote_mode,
             "follower_mode": follower_mode,
@@ -1233,7 +1227,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         return await self.request(Route("POST", "raids", None, parameters=params, target=target))
 
     async def delete_raid(self, target: PartialUser, broadcaster_id: str):
-        params: ParameterType= [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         return await self.request(Route("DELETE", "raids", None, parameters=params, target=target))
 
     async def post_ban_timeout_user(
@@ -1243,7 +1237,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         moderator_id: str,
         user_id: str,
         reason: str,
-        duration: int| None = None,
+        duration: int | None = None,
     ):
         params: ParameterType = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
         body = {"data": {"user_id": user_id, "reason": reason}}
@@ -1260,7 +1254,11 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         moderator_id: str,
         user_id: str,
     ):
-        params: ParameterType = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id), ("user_id", user_id)]
+        params: ParameterType = [
+            ("broadcaster_id", broadcaster_id),
+            ("moderator_id", moderator_id),
+            ("user_id", user_id),
+        ]
         return await self.request(Route("DELETE", "moderation/bans", None, parameters=params, target=target))
 
     async def get_follow_count(

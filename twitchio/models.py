@@ -755,7 +755,7 @@ class PartialUser:
 
     async def fetch_schedule(
         self,
-        segment_ids: list[str]  | None = None,
+        segment_ids: list[str] | None = None,
         start_time: datetime.datetime | None = None,
         utc_offset: int | None = None,
         first: int = 20,
@@ -834,9 +834,9 @@ class PartialUser:
         title: str,
         choices: list[str],
         duration: int,
-        bits_voting_enabled:bool | None = False,
+        bits_voting_enabled: bool | None = False,
         bits_per_vote: int | None = None,
-        channel_points_voting_enabled:bool | None = False,
+        channel_points_voting_enabled: bool | None = False,
         channel_points_per_vote: int | None = None,
     ):
         """|coro|
@@ -937,9 +937,7 @@ class UserBan(PartialUser):  # TODO will probably rework this
     def __init__(self, http: HTTPHandler, data: dict):
         super(UserBan, self).__init__(http, id=data["user_id"], name=data["user_login"])
         self.created_at: datetime.datetime = parse_timestamp(data["created_at"])
-        self.expires_at: datetime.datetime | None = (
-            parse_timestamp(data["expires_at"]) if data["expires_at"] else None
-        )
+        self.expires_at: datetime.datetime | None = parse_timestamp(data["expires_at"]) if data["expires_at"] else None
         self.reason: str = data["reason"]
         self.moderator = PartialUser(http, id=data["moderator_id"], name=data["moderator_login"])
 
@@ -2496,7 +2494,7 @@ class ChatSettings:
         self.slow_mode_wait_time: int | None = data.get("slow_mode_wait_time")
         self.subscriber_mode: bool = data["subscriber_mode"]
         self.unique_chat_mode: bool = data["unique_chat_mode"]
-        self.non_moderator_chat_delay:bool | None = data.get("non_moderator_chat_delay")
+        self.non_moderator_chat_delay: bool | None = data.get("non_moderator_chat_delay")
         self.non_moderator_chat_delay_duration: int | None = data.get("non_moderator_chat_delay_duration")
         self.moderator: PartialUser | None
         try:

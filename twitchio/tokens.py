@@ -23,7 +23,7 @@ SOFTWARE.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING
 
 import aiohttp
 from typing_extensions import Self
@@ -100,12 +100,12 @@ class Token(BaseToken):
 
     """
 
-    def __init__(self, access_token: str, refresh_token: Optional[str] = None) -> None:
+    def __init__(self, access_token: str, refresh_token: str | None = None) -> None:
         super().__init__(access_token)
-        self.refresh_token: Optional[str] = refresh_token
-        self._user: Optional[PartialUser] = None
-        self._scopes: List[str] = []
-        self._last_validation: Optional[float] = None
+        self.refresh_token: str | None = refresh_token
+        self._user: PartialUser | None = None
+        self._scopes: list[str] = []
+        self._last_validation: float | None = None
 
     async def refresh(self, handler: BaseTokenHandler, session: aiohttp.ClientSession) -> None:
         """|coro|
@@ -209,7 +209,7 @@ class Token(BaseToken):
 
         return self.access_token
 
-    def has_scope(self, scope: str) -> Optional[bool]:
+    def has_scope(self, scope: str) -> bool | None:
         """
         A helper function which determines whether the given token has a given scope or not.
         If the token has not previously been validated, this function will return ``None``
@@ -236,13 +236,13 @@ class BaseTokenHandler:
     client: Client
 
     def __init__(self) -> None:
-        self.__cache: Dict[Union[User, PartialUser], Set[Token]] = {}
+        self.__cache: dict[User | PartialUser, set[Token]] = {}
 
     def _post_init(self, client: Client) -> Self:
         self.client = client
         return self
 
-    async def get_user_token(self, user: Union[User, PartialUser], scopes: List[str]) -> Token:
+    async def get_user_token(self, user: User | PartialUser, scopes: list[str]) -> Token:
         """|coro|
         Method to be overriden in a subclass.
         This function receives a user and a list of scopes that the request needs any one of to make the request.
@@ -256,7 +256,7 @@ class BaseTokenHandler:
         -----------
         user: Union[:class:`~twitchio.User`, :class:`~twitchio.PartialUser`]
             The user that a token is expected for.
-        scopes: List[:class:`str`]
+        scopes: list[:class:`str`]
             A list of scopes that the endpoint needs one of. Any one or more of the scopes must be present on the returned token to successfully make the request
 
         Returns
@@ -270,7 +270,7 @@ class BaseTokenHandler:
         raise NotImplementedError
 
     async def _client_get_user_token(
-        self, http: HTTPHandler, user: Union[PartialUser, User], scope: List[str], *, no_cache: bool = False
+        self, http: HTTPHandler, user: User | PartialUser, scope: list[str], *, no_cache: bool = False
     ) -> Token:
         if not no_cache and user in self.__cache:
             if not self.__cache[user]:
@@ -307,7 +307,7 @@ class BaseTokenHandler:
             # TODO fire error handlers
             raise
 
-    async def _client_get_irc_login(self, client: Client, shard_id: int) -> Tuple[str, PartialUser]:
+    async def _client_get_irc_login(self, client: Client, shard_id: int) -> tuple[str, PartialUser]:
         try:
             token = await self.get_irc_token(shard_id)
         except Exception as e:
@@ -325,7 +325,7 @@ class BaseTokenHandler:
 
         return resp, token._user  # type: ignore
 
-    async def get_client_credentials(self) -> Tuple[str, Optional[str]]:
+    async def get_client_credentials(self) -> tuple[str, str | None]:
         """|coro|
         Method to be overriden in a subclass.
         This should return a :class:`tuple` of (client id, client secret).
@@ -374,23 +374,23 @@ class SimpleTokenHandler(BaseTokenHandler):
         self,
         access_token: str,
         client_id: str,
-        refresh_token: Optional[str] = None,
-        client_token: Optional[str] = None,
-        client_secret: Optional[str] = None,
+        refresh_token: str | None = None,
+        client_token: str | None = None,
+        client_secret: str | None = None,
     ) -> None:
         super().__init__()
         self.user_token = Token(access_token, refresh_token)
         self.client_token = client_token
         self.client_id: str = client_id
-        self.client_secret: Optional[str] = client_secret
+        self.client_secret: str | None = client_secret
 
-    async def get_user_token(self, user: Union[User, PartialUser], scope: Optional[str]) -> Token:
+    async def get_user_token(self, user: User | PartialUser, scope: str | None) -> Token:
         return self.user_token
 
     async def get_client_token(self) -> str:
         return self.client_token or self.user_token.access_token
 
-    async def get_client_credentials(self) -> Tuple[str, Optional[str]]:
+    async def get_client_credentials(self) -> tuple[str, str | None]:
         return self.client_id, self.client_secret
 
     async def get_irc_token(self, shard_id: int) -> Token:
@@ -414,7 +414,7 @@ class IRCTokenHandler(BaseTokenHandler):
         super().__init__()
         self.user_token = Token(access_token)
 
-    async def get_client_credentials(self) -> Tuple[str, Optional[str]]:
+    async def get_client_credentials(self) -> tuple[str, str | None]:
         return None, None  # type: ignore
 
     async def get_irc_token(self, shard_id: int) -> Token:

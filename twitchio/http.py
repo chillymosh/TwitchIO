@@ -32,15 +32,10 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
-    Dict,
     Generator,
     Generic,
-    List,
     Literal,
-    Optional,
-    Tuple,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -59,12 +54,12 @@ if TYPE_CHECKING:
     from .types.extensions import ExtensionBuilder as ExtensionBuilderType
     from .types.payloads import BasePayload
 
-    UserType = Union[PartialUser, User]
+    UserType = PartialUser | User
     methodType = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
-    bodyType = Optional[Union[Dict[str, Any], str]]
+    bodyType = dict[str, Any] | str | None
 
 TokenHandlerT = TypeVar("TokenHandlerT", bound=BaseTokenHandler)
-ParameterType = List[Tuple[str, Optional[str]]]
+ParameterType = list[tuple[str, str | None ]]
 T = TypeVar("T")
 logger = logging.getLogger("twitchio.http")
 
@@ -79,15 +74,15 @@ class Route:
         route: str,
         body: bodyType,
         ratelimit_tokens: int = 1,
-        scope: Optional[List[str]] = None,
-        parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
-        target: Optional[UserType] = None,
+        scope: list[str] | None = None,
+        parameters: list[tuple[str, str | None]] | None = None,
+        target: UserType | None = None,
     ) -> None:
         self._url: URL = self.BASE_URL / route.lstrip("/")
         self.method: methodType = method
-        self.target: Optional[UserType] = target
+        self.target: UserType | None = target
         self.headers = headers = {}
-        self.scope: List[str] = scope or []
+        self.scope: list[str] = scope or []
         self.ratelimit_tokens: int = ratelimit_tokens
 
         if isinstance(body, dict):
@@ -107,7 +102,7 @@ class Route:
         return self._url.with_query(self.parameters)
 
 
-ChunkerType = Callable[[Optional[str]], Awaitable["BasePayload"]]
+ChunkerType = Callable[[str | None], Awaitable["BasePayload"]]
 
 
 class HTTPAwaitableAsyncIterator(Generic[T]):
@@ -117,18 +112,18 @@ class HTTPAwaitableAsyncIterator(Generic[T]):
         self,
         http: HTTPHandler,
         chunker: ChunkerType,
-        adapter: Optional[Callable[[HTTPHandler, Dict[str, Any]], T]] = None,
+        adapter: Callable[[HTTPHandler, dict[str, Any]], T] | None = None,
     ) -> None:
         self.http: HTTPHandler = http
         self.chunker: ChunkerType = chunker
-        self.adapter: Optional[Callable[[HTTPHandler, Dict[str, Any]], T]] = adapter
-        self.page: Optional[str] = None
-        self.buffer: List[Dict[str, Any]] = []
+        self.adapter: Callable[[HTTPHandler, dict[str, Any]], T] | None = adapter
+        self.page: str | None = None
+        self.buffer: list[dict[str, Any]] = []
 
-    def set_adapter(self, adapter: Callable[[HTTPHandler, Dict[str, Any]], T]) -> None:
+    def set_adapter(self, adapter: Callable[[HTTPHandler, dict[str, Any]], T]) -> None:
         self.adapter = adapter
 
-    async def chunk_once(self, page: Optional[str]) -> Any:
+    async def chunk_once(self, page: str | None) -> Any:
         if page is MISSING:  # iterator exhausted
             raise StopAsyncIteration
 
@@ -138,7 +133,7 @@ class HTTPAwaitableAsyncIterator(Generic[T]):
         self.page = pagination.get("cursor", MISSING)
         return data["data"]
 
-    async def _await_and_discard(self) -> List[T]:
+    async def _await_and_discard(self) -> list[T]:
         assert (
             self.adapter is not None
         ), "Cannot paginate without an adapter. This is an internal error, please report it"
@@ -147,7 +142,7 @@ class HTTPAwaitableAsyncIterator(Generic[T]):
         self.page = MISSING
         return [self.adapter(self.http, x) for x in data]
 
-    def __await__(self) -> Generator[Any, None, List[T]]:
+    def __await__(self) -> Generator[Any, None, list[T]]:
         return self._await_and_discard().__await__()
 
     def __aiter__(self):
@@ -165,10 +160,10 @@ class HTTPAwaitableAsyncIterator(Generic[T]):
 
 
 class HTTPAwaitableAsyncIteratorWithSource(HTTPAwaitableAsyncIterator, Generic[T]):
-    def __init__(self, source: List[T]) -> None:
-        self.buffer: List[T] = source
+    def __init__(self, source: list[T]) -> None:
+        self.buffer: list[T] = source
 
-    async def _await_and_discard(self) -> List[T]:
+    async def _await_and_discard(self) -> list[T]:
         return self.buffer
 
     async def __anext__(self) -> T:
@@ -181,24 +176,24 @@ class HTTPAwaitableAsyncIteratorWithSource(HTTPAwaitableAsyncIterator, Generic[T
 class HTTPHandler(Generic[TokenHandlerT, T]):
     def __init__(
         self,
-        loop: Optional[asyncio.AbstractEventLoop],
+        loop: asyncio.AbstractEventLoop | None,
         token_handler: TokenHandlerT,
-        proxy: Optional[str] = None,
-        proxy_auth: Optional[aiohttp.BasicAuth] = None,
-        trace: Optional[aiohttp.TraceConfig] = None,
-        client: Optional[Client] = None,
+        proxy: str | None = None,
+        proxy_auth: aiohttp.BasicAuth | None = None,
+        trace: aiohttp.TraceConfig | None = None,
+        client: Client | None = None,
         **_,
     ) -> None:
-        self.loop: Optional[asyncio.AbstractEventLoop] = loop
+        self.loop: asyncio.AbstractEventLoop | None = loop
         self.token_handler: TokenHandlerT = token_handler
 
-        self.proxy: Optional[str] = proxy
-        self.proxy_auth: Optional[aiohttp.BasicAuth] = proxy_auth
-        self.trace: Optional[aiohttp.TraceConfig] = trace
-        self._session: Optional[aiohttp.ClientSession] = None
+        self.proxy: str | None = proxy
+        self.proxy_auth: aiohttp.BasicAuth | None = proxy_auth
+        self.trace: aiohttp.TraceConfig | None = trace
+        self._session: aiohttp.ClientSession | None = None
 
         self.buckets = HTTPRateLimiter()
-        self.client: Optional[Client] = client
+        self.client: Client | None = client
 
     async def prepare(self):
         if not self.loop:
@@ -214,7 +209,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             await self._session.close()
 
     async def request_paginated_endpoint(
-        self, route: Route, paginator: Optional[str] = None, limit: Optional[int] = 100
+        self, route: Route, paginator: str| None  = None, limit: int| None  = 100
     ):
         copy_route = copy.copy(route)
         if "limit" not in route.parameters:
@@ -262,7 +257,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
                     route.method, url, headers=headers
                 ) as response:
                     _data: str = await response.text("utf-8")
-                    data: Union[str, BasePayload]
+                    data: str | BasePayload
                     if response.headers["Content-Type"].startswith("application/json"):
                         data = json_loader(_data)
                     else:
@@ -347,20 +342,20 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
     async def get_extension_analytics(
         self,
         target: PartialUser,
-        extension_id: Optional[str] = None,
-        type: Optional[str] = None,
-        started_at: Optional[datetime.datetime] = None,
-        ended_at: Optional[datetime.datetime] = None,
+        extension_id: str| None  = None,
+        type: str | None = None,
+        started_at: datetime.datetime | None = None,
+        ended_at: datetime.datetime | None = None,
     ):
         raise NotImplementedError  # TODO
 
     async def get_game_analytics(
         self,
         target: PartialUser,
-        game_id: Optional[str] = None,
-        type: Optional[str] = None,
-        started_at: Optional[datetime.datetime] = None,
-        ended_at: Optional[datetime.datetime] = None,
+        game_id: str | None  = None,
+        type: str | None  = None,
+        started_at: datetime.datetime | None  = None,
+        ended_at: datetime.datetime | None  = None,
     ):
         raise NotImplementedError  # TODO
 
@@ -368,8 +363,8 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         self,
         target: PartialUser,
         period: Literal["all", "day", "week", "month", "year"] = "all",
-        user_id: Optional[int] = None,
-        started_at: Optional[datetime.datetime] = None,
+        user_id: int | None  = None,
+        started_at: datetime.datetime | None  = None,
     ) -> Any:
         assert period in {"all", "day", "week", "month", "year"}
         parameters: ParameterType = [
@@ -381,18 +376,18 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         route = Route("GET", "bits/leaderboard", "", parameters=parameters, target=target, scope=["bits:read"])
         return await self.request(route)
 
-    def get_cheermotes(self, broadcaster_id: Optional[str] = None, target: Optional[PartialUser] = None):
+    def get_cheermotes(self, broadcaster_id: str | None  = None, target: PartialUser | None = None):
         return self.request(
             Route("GET", "bits/cheermotes", None, parameters=[("broadcaster_id", broadcaster_id)], target=target)
         )
 
     def get_extension_transactions(
-        self, extension_id: str, ids: Optional[List[Any]] = None
+        self, extension_id: str, ids: list[Any] | None  = None
     ) -> HTTPAwaitableAsyncIterator:
-        q: ParameterType = [("extension_id", extension_id)]
+        params: ParameterType = [("extension_id", extension_id)]
         if ids:
-            q.extend(("id", str(id)) for id in ids)
-        return self.request_paginated_route(Route("GET", "extensions/transactions", None, parameters=q))
+            params.extend(("id", str(id)) for id in ids)
+        return self.request_paginated_route(Route("GET", "extensions/transactions", None, parameters=params))
 
     def create_reward(
         self,
@@ -400,13 +395,13 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: int,
         title: str,
         cost: int,
-        prompt: Optional[str] = None,
+        prompt: str | None  = None,
         is_enabled: bool = True,
-        background_color: Optional[str] = None,
+        background_color: str | None  = None,
         user_input_required: bool = False,
-        max_per_stream: Optional[int] = None,
-        max_per_user: Optional[int] = None,
-        global_cooldown: Optional[int] = None,
+        max_per_stream: int | None  = None,
+        max_per_user: int | None  = None,
+        global_cooldown: int | None  = None,
         fufill_immediatly: bool = False,
     ) -> Any:
         params: ParameterType = [("broadcaster_id", str(broadcaster_id))]
@@ -436,7 +431,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         return self.request(Route("POST", "channel_points/custom_rewards", parameters=params, body=data, target=target))
 
     def get_rewards(
-        self, target: PartialUser, broadcaster_id: int, only_manageable: bool = False, ids: Optional[List[int]] = None
+        self, target: PartialUser, broadcaster_id: int, only_manageable: bool = False, ids: list[int] | None  = None
     ) -> HTTPAwaitableAsyncIterator:
         params = [("broadcaster_id", str(broadcaster_id)), ("only_manageable_rewards", str(only_manageable))]
 
@@ -452,20 +447,20 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         target: PartialUser,
         broadcaster_id: int,
         reward_id: str,
-        title: Optional[str] = None,
-        prompt: Optional[str] = None,
-        cost: Optional[int] = None,
-        background_color: Optional[str] = None,
-        enabled: Optional[bool] = None,
-        input_required: Optional[bool] = None,
-        max_per_stream_enabled: Optional[bool] = None,
-        max_per_stream: Optional[int] = None,
-        max_per_user_per_stream_enabled: Optional[bool] = None,
-        max_per_user_per_stream: Optional[int] = None,
-        global_cooldown_enabled: Optional[bool] = None,
-        global_cooldown: Optional[int] = None,
-        paused: Optional[bool] = None,
-        redemptions_skip_queue: Optional[bool] = None,
+        title: str | None = None,
+        prompt: str | None  = None,
+        cost: int | None  = None,
+        background_color: str | None  = None,
+        enabled: bool | None = None,
+        input_required: bool | None = None,
+        max_per_stream_enabled: bool | None = None,
+        max_per_stream: int| None = None,
+        max_per_user_per_stream_enabled: bool | None = None,
+        max_per_user_per_stream: int| None = None,
+        global_cooldown_enabled: bool | None = None,
+        global_cooldown: int| None = None,
+        paused: bool | None = None,
+        redemptions_skip_queue: bool | None = None,
     ) -> Any:
         data = {
             "title": title,
@@ -502,9 +497,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         target: PartialUser,
         broadcaster_id: int,
         reward_id: str,
-        redemption_id: Optional[str] = None,
-        status: Optional[str] = None,
-        sort: Optional[str] = None,
+        redemption_id: str | None = None,
+        status: str | None = None,
+        sort: str | None = None,
     ) -> HTTPAwaitableAsyncIterator:
         params = [("broadcaster_id", str(broadcaster_id)), ("reward_id", reward_id)]
 
@@ -538,7 +533,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         self,
         target: PartialUser,
         broadcaster_id: int,
-        prediction_id: Optional[str] = None,
+        prediction_id: str | None = None,
     ) -> HTTPAwaitableAsyncIterator:
         params: ParameterType = [("broadcaster_id", str(broadcaster_id))]
 
@@ -555,7 +550,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: str,
         prediction_id: str,
         status: str,
-        winning_outcome_id: Optional[str] = None,
+        winning_outcome_id: str | None = None,
     ) -> Any:
         body = {
             "broadcaster_id": broadcaster_id,
@@ -610,23 +605,23 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
 
     def get_clips(
         self,
-        broadcaster_id: Optional[int] = None,
-        game_id: Optional[str] = None,
-        ids: Optional[List[str]] = None,
-        started_at: Optional[datetime.datetime] = None,
-        ended_at: Optional[datetime.datetime] = None,
-        target: Optional[PartialUser] = None,
+        broadcaster_id: int| None = None,
+        game_id: str | None = None,
+        ids: list[str] | None = None,
+        started_at: datetime.datetime | None = None,
+        ended_at: datetime.datetime | None = None,
+        target: PartialUser | None = None,
     ) -> HTTPAwaitableAsyncIterator:
-        q = [
+        params = [
             ("broadcaster_id", broadcaster_id),
             ("game_id", game_id),
             ("started_at", started_at.isoformat() if started_at else None),
             ("ended_at", ended_at.isoformat() if ended_at else None),
         ]
         if ids:
-            q.extend(("id", id) for id in ids)
+            params.extend(("id", id) for id in ids)
 
-        query = [x for x in q if x[1] is not None]
+        query = [x for x in params if x[1] is not None]
 
         return self.request_paginated_route(Route("GET", "clips", None, parameters=query, target=target))
 
@@ -636,7 +631,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def get_entitlements(
-        self, id: Optional[str] = None, user_id: Optional[str] = None, game_id: Optional[str] = None
+        self, id: str | None = None, user_id: str | None = None, game_id: str | None = None
     ) -> HTTPAwaitableAsyncIterator:
         return self.request_paginated_route(
             Route(
@@ -644,33 +639,33 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             )
         )
 
-    def get_code_status(self, codes: List[str], user_id: int) -> Any:
-        q: ParameterType = [("user_id", str(user_id))]
-        q.extend(("code", code) for code in codes)
+    def get_code_status(self, codes: list[str], user_id: int) -> Any:
+        params: ParameterType = [("user_id", str(user_id))]
+        params.extend(("code", code) for code in codes)
 
-        return self.request(Route("GET", "entitlements/codes", None, parameters=q))
+        return self.request(Route("GET", "entitlements/codes", None, parameters=params))
 
-    def post_redeem_code(self, user_id: int, codes: List[str]) -> Any:
-        q: ParameterType = [("user_id", str(user_id))]
-        q.extend(("code", c) for c in codes)
+    def post_redeem_code(self, user_id: int, codes: list[str]) -> Any:
+        params: ParameterType = [("user_id", str(user_id))]
+        params.extend(("code", c) for c in codes)
 
-        return self.request(Route("POST", "entitlements/code", None, parameters=q))
+        return self.request(Route("POST", "entitlements/code", None, parameters=params))
 
-    def get_top_games(self, target: Optional[PartialUser] = None) -> HTTPAwaitableAsyncIterator:
+    def get_top_games(self, target: PartialUser | None = None) -> HTTPAwaitableAsyncIterator:
         return self.request_paginated_route(Route("GET", "games/top", None, target=target))
 
     def get_games(
-        self, game_ids: Optional[List[int]], game_names: Optional[List[str]], target: Optional[PartialUser] = None
+        self, game_ids: list[int] | None, game_names: list[str] | None, target: PartialUser | None = None
     ) -> HTTPAwaitableAsyncIterator:
         if not game_ids or not game_names:
             raise ValueError("At least one of game_ids and game_names must be provided")
-        q = []
-        q.extend(("id", id) for id in game_ids)
-        q.extend(("name", name) for name in game_names)
-        return self.request_paginated_route(Route("GET", "games", None, parameters=q, target=target))
+        params = []
+        params.extend(("id", id) for id in game_ids)
+        params.extend(("name", name) for name in game_names)
+        return self.request_paginated_route(Route("GET", "games", None, parameters=params, target=target))
 
     def get_hype_train(
-        self, broadcaster_id: str, id: Optional[str] = None, target: Optional[PartialUser] = None
+        self, broadcaster_id: str, id: str | None = None, target: PartialUser | None = None
     ) -> HTTPAwaitableAsyncIterator:
         return self.request_paginated_route(
             Route(
@@ -683,7 +678,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def post_automod_check(
-        self, target: PartialUser, broadcaster_id: str, msgs: List[Dict[str, Union[str, int]]]
+        self, target: PartialUser, broadcaster_id: str, msgs: list[dict[str, str | int]]
     ) -> Any:
         return self.request(
             Route(
@@ -696,56 +691,56 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def get_channel_ban_unban_events(
-        self, target: PartialUser, broadcaster_id: str, user_ids: Optional[List[int]] = None
+        self, target: PartialUser, broadcaster_id: str, user_ids: list[int] | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         if user_ids:
-            q.extend(("user_id", str(id)) for id in user_ids)
+            params.extend(("user_id", str(id)) for id in user_ids)
 
         return self.request_paginated_route(
-            Route("GET", "moderation/banned/events", None, parameters=q, target=target, scope=["moderation:read"])
+            Route("GET", "moderation/banned/events", None, parameters=params, target=target, scope=["moderation:read"])
         )
 
     def get_channel_bans(
-        self, target: PartialUser, broadcaster_id: str, user_ids: Optional[List[Union[str, int]]] = None
+        self, target: PartialUser, broadcaster_id: str, user_ids: list[str | int] | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         if user_ids:
-            q.extend(("user_id", str(id)) for id in user_ids)
+            params.extend(("user_id", str(id)) for id in user_ids)
 
         return self.request_paginated_route(
-            Route("GET", "moderation/banned", None, parameters=q, target=target, scope=["moderation:read"])
+            Route("GET", "moderation/banned", None, parameters=params, target=target, scope=["moderation:read"])
         )
 
     def get_channel_moderators(
-        self, target: PartialUser, broadcaster_id: str, user_ids: Optional[List[int]] = None
+        self, target: PartialUser, broadcaster_id: str, user_ids: list[int] | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         if user_ids:
-            q.extend(("user_id", str(id)) for id in user_ids)
+            params.extend(("user_id", str(id)) for id in user_ids)
 
         return self.request_paginated_route(
-            Route("GET", "moderation/moderators", None, parameters=q, target=target, scope=["moderation:read"])
+            Route("GET", "moderation/moderators", None, parameters=params, target=target, scope=["moderation:read"])
         )
 
     def get_channel_mod_events(
-        self, target: PartialUser, broadcaster_id: str, user_ids: Optional[List[str]] = None
+        self, target: PartialUser, broadcaster_id: str, user_ids: list[str] | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         if user_ids:
-            q.extend(("user_id", id) for id in user_ids)
+            params.extend(("user_id", id) for id in user_ids)
 
         return self.request_paginated_route(
-            Route("GET", "moderation/moderators/events", None, parameters=q, target=target, scope=["moderation:read"])
+            Route("GET", "moderation/moderators/events", None, parameters=params, target=target, scope=["moderation:read"])
         )
 
-    def get_search_categories(self, query: str, target: Optional[PartialUser] = None) -> HTTPAwaitableAsyncIterator:
+    def get_search_categories(self, query: str, target: PartialUser | None = None) -> HTTPAwaitableAsyncIterator:
         return self.request_paginated_route(
             Route("GET", "search/categories", None, parameters=[("query", query)], target=target)
         )
 
     def get_search_channels(
-        self, query: str, live: bool = False, target: Optional[PartialUser] = None
+        self, query: str, live: bool = False, target: PartialUser | None = None
     ) -> HTTPAwaitableAsyncIterator:
         return self.request_paginated_route(
             Route(
@@ -767,28 +762,28 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
 
     def get_streams(
         self,
-        game_ids: Optional[List[int]] = None,
-        user_ids: Optional[List[int]] = None,
-        user_logins: Optional[List[str]] = None,
-        languages: Optional[List[str]] = None,
-        target: Optional[PartialUser] = None,
+        game_ids: list[int] | None = None,
+        user_ids: list[int] | None = None,
+        user_logins: list[str] | None = None,
+        languages: list[str] | None = None,
+        target: PartialUser | None = None,
     ) -> HTTPAwaitableAsyncIterator:
-        q = []
+        params = []
         if game_ids:
-            q.extend(("game_id", g) for g in game_ids)
+            params.extend(("game_id", g) for g in game_ids)
 
         if user_ids:
-            q.extend(("user_id", u) for u in user_ids)
+            params.extend(("user_id", u) for u in user_ids)
 
         if user_logins:
-            q.extend(("user_login", l) for l in user_logins)
+            params.extend(("user_login", l) for l in user_logins)
 
         if languages:
-            q.extend(("language", l) for l in languages)
+            params.extend(("language", l) for l in languages)
 
-        return self.request_paginated_route(Route("GET", "streams", None, parameters=q, target=target))
+        return self.request_paginated_route(Route("GET", "streams", None, parameters=params, target=target))
 
-    def post_stream_marker(self, target: PartialUser, user_id: str, description: Optional[str] = None) -> Any:
+    def post_stream_marker(self, target: PartialUser, user_id: str, description: str | None = None) -> Any:
         return self.request(
             Route(
                 "POST",
@@ -800,7 +795,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def get_stream_markers(
-        self, target: PartialUser, user_id: Optional[str] = None, video_id: Optional[str] = None
+        self, target: PartialUser, user_id: str | None = None, video_id: str | None = None
     ) -> Any:
         return self.request(
             Route(
@@ -813,7 +808,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             )
         )
 
-    def get_channels(self, broadcaster_ids: List[int], target: Optional[PartialUser] = None):
+    def get_channels(self, broadcaster_ids: list[int], target: PartialUser | None = None):
         if len(broadcaster_ids) > 100 or not broadcaster_ids:
             raise ValueError("You must specify between a minimum of 1 and a maximum of 100 IDs")
         return self.request(
@@ -830,9 +825,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         self,
         target: PartialUser,
         broadcaster_id: str,
-        game_id: Optional[str] = None,
-        language: Optional[str] = None,
-        title: Optional[str] = None,
+        game_id: str | None = None,
+        language: str | None = None,
+        title: str | None = None,
     ) -> Any:
         assert any((game_id, language, title))
         body = {
@@ -855,9 +850,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
     def get_channel_schedule(
         self,
         broadcaster_id: str,
-        segment_ids: Optional[List[str]] = None,
-        start_time: Optional[datetime.datetime] = None,
-        utc_offset: Optional[int] = None,
+        segment_ids: list[str] | None = None,
+        start_time: datetime.datetime | None = None,
+        utc_offset: int| None = None,
         first: int = 20,
     ) -> Any:
         if first > 25 or first < 1:
@@ -868,7 +863,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
             start_time = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")  # type: ignore
         if utc_offset:
             utc_offset = str(utc_offset)  # type: ignore
-        q = [
+        params: ParameterType = [
             x
             for x in [
                 ("broadcaster_id", broadcaster_id),
@@ -880,33 +875,33 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         ]
 
         if segment_ids:
-            q.extend(("id", id) for id in segment_ids)
+            params.extend(("id", id) for id in segment_ids)
 
-        return self.request(Route("GET", "schedule", None, parameters=q))
+        return self.request(Route("GET", "schedule", None, parameters=params))
 
     def get_channel_subscriptions(
-        self, target: PartialUser, broadcaster_id: str, user_ids: Optional[List[str]] = None
+        self, target: PartialUser, broadcaster_id: str, user_ids: list[str] | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         if user_ids:
-            q.extend(("user_id", u) for u in user_ids)
+            params.extend(("user_id", u) for u in user_ids)
 
-        return self.request_paginated_route(Route("GET", "subscriptions", None, parameters=q, target=target))
+        return self.request_paginated_route(Route("GET", "subscriptions", None, parameters=params, target=target))
 
     def get_stream_tags(
-        self, tag_ids: Optional[List[str]] = None, target: Optional[PartialUser] = None
+        self, tag_ids: list[str] | None = None, target: PartialUser | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q = []
+        params = []
         if tag_ids:
-            q.extend(("tag_id", u) for u in tag_ids)
+            params.extend(("tag_id", u) for u in tag_ids)
 
-        return self.request_paginated_route(Route("GET", "tags/streams", None, parameters=q or None, target=target))
+        return self.request_paginated_route(Route("GET", "tags/streams", None, parameters=params or None, target=target))
 
     def get_channel_tags(self, broadcaster_id: str):
         return self.request(Route("GET", "streams/tags", None, parameters=[("broadcaster_id", broadcaster_id)]))
 
     def put_replace_channel_tags(
-        self, target: PartialUser, broadcaster_id: str, tag_ids: Optional[List[str]] = None
+        self, target: PartialUser, broadcaster_id: str, tag_ids: list[str] | None = None
     ) -> Any:
         return self.request(
             Route(
@@ -944,19 +939,19 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def get_users(
-        self, ids: Optional[List[int]], logins: Optional[List[str]], target: Optional[PartialUser] = None
+        self, ids: list[int] | None, logins: list[str] | None, target: PartialUser | None = None
     ) -> HTTPAwaitableAsyncIterator:
-        q = []
+        params = []
         if ids:
-            q.extend(("id", id) for id in ids)
+            params.extend(("id", id) for id in ids)
 
         if logins:
-            q.extend(("login", login) for login in logins)
+            params.extend(("login", login) for login in logins)
 
-        return self.request_paginated_route(Route("GET", "users", None, parameters=q, target=target))
+        return self.request_paginated_route(Route("GET", "users", None, parameters=params, target=target))
 
     def get_user_follows(
-        self, from_id: Optional[str] = None, to_id: Optional[str] = None, target: Optional[PartialUser] = None
+        self, from_id: str | None = None, to_id: str | None = None, target: PartialUser | None = None
     ) -> HTTPAwaitableAsyncIterator:
         return self.request_paginated_route(
             Route(
@@ -974,7 +969,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
     def get_channel_extensions(self, target: PartialUser) -> Any:
         return self.request(Route("GET", "users/extensions/list", None, target=target))
 
-    def get_user_active_extensions(self, target: PartialUser, user_id: Optional[str] = None) -> Any:
+    def get_user_active_extensions(self, target: PartialUser, user_id: str | None = None) -> Any:
         return self.request(
             Route(
                 "GET",
@@ -991,16 +986,16 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
 
     def get_videos(
         self,
-        ids: Optional[List[int]] = None,
-        user_id: Optional[str] = None,
-        game_id: Optional[str] = None,
-        sort: Optional[str] = "time",
-        type: Optional[str] = "all",
-        period: Optional[str] = "all",
-        language: Optional[str] = None,
-        target: Optional[PartialUser] = None,
+        ids: list[int] | None = None,
+        user_id: str | None = None,
+        game_id: str | None = None,
+        sort: str | None = "time",
+        type: str | None = "all",
+        period: str | None = "all",
+        language: str | None = None,
+        target: PartialUser | None = None,
     ) -> HTTPAwaitableAsyncIterator:
-        q = [
+        params = [
             ("user_id", user_id),
             ("game_id", game_id),
             ("sort", sort),
@@ -1010,43 +1005,43 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         ]
 
         if ids:
-            q.extend(("id", id) for id in ids)
+            params.extend(("id", id) for id in ids)
 
-        return self.request_paginated_route(Route("GET", "videos", None, parameters=q, target=target))
+        return self.request_paginated_route(Route("GET", "videos", None, parameters=params, target=target))
 
-    def delete_videos(self, target: PartialUser, ids: List[int]) -> Any:
-        q: ParameterType = [("id", str(x)) for x in ids]
+    def delete_videos(self, target: PartialUser, ids: list[int]) -> Any:
+        params: ParameterType = [("id", str(x)) for x in ids]
 
-        return self.request(Route("DELETE", "videos", None, parameters=q, target=target))
+        return self.request(Route("DELETE", "videos", None, parameters=params, target=target))
 
     def get_webhook_subs(self) -> Any:  # TODO is this paginated?
         return self.request(Route("GET", "webhooks/subscriptions", None))
 
     def get_teams(
-        self, team_name: Optional[str] = None, team_id: Optional[int] = None, target: Optional[PartialUser] = None
+        self, team_name: str | None = None, team_id: int| None = None, target: PartialUser | None = None
     ):
-        q: ParameterType
+        params: ParameterType
         if team_name:
-            q = [("name", team_name)]
+            params = [("name", team_name)]
 
         elif team_id:
-            q = [("id", str(team_id))]
+            params = [("id", str(team_id))]
 
         else:
             raise ValueError("You need to provide a team name or id")
 
-        return self.request(Route("GET", "teams", None, parameters=q, target=target))
+        return self.request(Route("GET", "teams", None, parameters=params, target=target))
 
     def get_channel_teams(self, broadcaster_id: str) -> Any:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
-        return self.request(Route("GET", "teams/channel", None, parameters=q))
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
+        return self.request(Route("GET", "teams/channel", None, parameters=params))
 
     def get_polls(
         self,
         broadcaster_id: str,
         target: PartialUser,
-        poll_ids: Optional[List[str]] = None,
-        first: Optional[int] = 20,
+        poll_ids: list[str] | None = None,
+        first: int| None = 20,
     ) -> HTTPAwaitableAsyncIterator:
         if poll_ids and len(poll_ids) > 100:
             raise ValueError("poll_ids can only have up to 100 entries")
@@ -1054,12 +1049,12 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if first and (first > 25 or first < 1):
             raise ValueError("first can only be between 1 and 20")
 
-        q: ParameterType = [("broadcaster_id", broadcaster_id), ("first", str(first))]
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("first", str(first))]
 
         if poll_ids:
-            q.extend(("id", poll_id) for poll_id in poll_ids)
+            params.extend(("id", poll_id) for poll_id in poll_ids)
 
-        return self.request_paginated_route(Route("GET", "polls", None, parameters=q, target=target))
+        return self.request_paginated_route(Route("GET", "polls", None, parameters=params, target=target))
 
     def post_poll(
         self,
@@ -1068,10 +1063,10 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         title: str,
         choices,
         duration: int,
-        bits_voting_enabled: Optional[bool] = False,
-        bits_per_vote: Optional[int] = None,
-        channel_points_voting_enabled: Optional[bool] = False,
-        channel_points_per_vote: Optional[int] = None,
+        bits_voting_enabled: bool | None = False,
+        bits_per_vote: int| None = None,
+        channel_points_voting_enabled: bool | None = False,
+        channel_points_per_vote: int| None = None,
     ) -> Any:
         if len(title) > 60:
             raise ValueError("title must be less than or equal to 60 characters")
@@ -1118,28 +1113,28 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def get_chat_settings(
-        self, broadcaster_id: str, moderator_id: Optional[str] = None, target: Optional[PartialUser] = None
+        self, broadcaster_id: str, moderator_id: str | None = None, target: PartialUser | None = None
     ) -> Any:
-        q: ParameterType = [("broadcaster_id", broadcaster_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id)]
         if moderator_id:
-            q.append(("moderator_id", moderator_id))
+            params.append(("moderator_id", moderator_id))
 
-        return self.request(Route("GET", "chat/settings", None, parameters=q, target=target))
+        return self.request(Route("GET", "chat/settings", None, parameters=params, target=target))
 
     def patch_chat_settings(
         self,
         broadcaster_id: str,
         moderator_id: str,
         target: PartialUser,
-        emote_mode: Optional[bool] = None,
-        follower_mode: Optional[bool] = None,
-        follower_mode_duration: Optional[int] = None,
-        slow_mode: Optional[bool] = None,
-        slow_mode_wait_time: Optional[int] = None,
-        subscriber_mode: Optional[bool] = None,
-        unique_chat_mode: Optional[bool] = None,
-        non_moderator_chat_delay: Optional[bool] = None,
-        non_moderator_chat_delay_duration: Optional[int] = None,
+        emote_mode: bool | None = None,
+        follower_mode: bool | None = None,
+        follower_mode_duration: int| None = None,
+        slow_mode: bool | None = None,
+        slow_mode_wait_time: int| None = None,
+        subscriber_mode: bool | None = None,
+        unique_chat_mode: bool | None = None,
+        non_moderator_chat_delay: bool | None = None,
+        non_moderator_chat_delay_duration: int| None = None,
     ) -> Any:
         if follower_mode_duration and follower_mode_duration > 129600:
             raise ValueError("follower_mode_duration must be below 129600")
@@ -1150,7 +1145,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if non_moderator_chat_delay_duration and non_moderator_chat_delay_duration not in {2, 4, 6}:
             raise ValueError("non_moderator_chat_delay_duration must be 2, 4 or 6")
 
-        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        params: ParameterType= [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
         data = {
             "emote_mode": emote_mode,
             "follower_mode": follower_mode,
@@ -1164,7 +1159,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         }
         data = {k: v for k, v in data.items() if v is not None}
 
-        return self.request(Route("PATCH", "chat/settings", data, parameters=q, target=target))
+        return self.request(Route("PATCH", "chat/settings", data, parameters=params, target=target))
 
     ######### NEW STUFF TO UPDATE
     async def post_chat_announcement(
@@ -1173,25 +1168,25 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: str,
         moderator_id: str,
         message: str,
-        color: Optional[str] = "primary",
+        color: str | None = "primary",
     ):
-        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        params = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
         body = {"message": message, "color": color}
-        return await self.request(Route("POST", "chat/announcements", parameters=q, body=body, target=target))
+        return await self.request(Route("POST", "chat/announcements", parameters=params, body=body, target=target))
 
     async def delete_chat_messages(
-        self, target: PartialUser, broadcaster_id: str, moderator_id: str, message_id: Optional[str] = None
+        self, target: PartialUser, broadcaster_id: str, moderator_id: str, message_id: str | None = None
     ):
-        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        params = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
         if message_id:
-            q.append(("message_id", message_id))
-        return await self.request(Route("DELETE", "moderation/chat", None, parameters=q, target=target))
+            params.append(("message_id", message_id))
+        return await self.request(Route("DELETE", "moderation/chat", None, parameters=params, target=target))
 
     async def put_user_chat_color(self, target: PartialUser, user_id: str, color: str):
-        q = [("user_id", user_id), ("color", color)]
-        return await self.request(Route("PUT", "chat/color", None, parameters=q, target=target))
+        params = [("user_id", user_id), ("color", color)]
+        return await self.request(Route("PUT", "chat/color", None, parameters=params, target=target))
 
-    async def get_user_chat_color(self, user_ids: List[int], target: Optional[PartialUser] = None):
+    async def get_user_chat_color(self, user_ids: list[int], target: PartialUser | None = None):
         if len(user_ids) > 100:
             raise ValueError("You can only get up to 100 user chat colors at once")
         return await self.request(
@@ -1201,45 +1196,45 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     async def post_channel_moderator(self, target: PartialUser, broadcaster_id: str, user_id: str):
-        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
-        return await self.request(Route("POST", "moderation/moderators", None, parameters=q, target=target))
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("POST", "moderation/moderators", None, parameters=params, target=target))
 
     async def delete_channel_moderator(self, target: PartialUser, broadcaster_id: str, user_id: str):
-        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
-        return await self.request(Route("DELETE", "moderation/moderators", None, parameters=q, target=target))
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("DELETE", "moderation/moderators", None, parameters=params, target=target))
 
     async def get_channel_vips(
-        self, target: PartialUser, broadcaster_id: str, first: int = 20, user_ids: Optional[List[int]] = None
+        self, target: PartialUser, broadcaster_id: str, first: int = 20, user_ids: list[int] | None = None
     ):
-        q = [("broadcaster_id", broadcaster_id), ("first", first)]
+        params = [("broadcaster_id", broadcaster_id), ("first", first)]
         if first > 100:
             raise ValueError("You can only get up to 100 VIPs at once")
         if user_ids:
             if len(user_ids) > 100:
                 raise ValueError("You can can only specify up to 100 VIPs")
-            q.extend(("user_id", str(user_id)) for user_id in user_ids)
-        return await self.request(Route("GET", "channels/vips", None, parameters=q, target=target))
+            params.extend(("user_id", str(user_id)) for user_id in user_ids)
+        return await self.request(Route("GET", "channels/vips", None, parameters=params, target=target))
 
     async def post_channel_vip(self, target: PartialUser, broadcaster_id: str, user_id: str):
-        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
-        return await self.request(Route("POST", "channels/vips", None, parameters=q, target=target))
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("POST", "channels/vips", None, parameters=params, target=target))
 
     async def delete_channel_vip(self, target: PartialUser, broadcaster_id: str, user_id: str):
-        q = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
-        return await self.request(Route("DELETE", "channels/vips", None, parameters=q, target=target))
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("user_id", user_id)]
+        return await self.request(Route("DELETE", "channels/vips", None, parameters=params, target=target))
 
     async def post_whisper(self, target: PartialUser, from_user_id: str, to_user_id: str, message: str):
-        q = [("from_user_id", from_user_id), ("to_user_id", to_user_id)]
+        params: ParameterType = [("from_user_id", from_user_id), ("to_user_id", to_user_id)]
         body = {"message": message}
-        return await self.request(Route("POST", "whispers", body=body, parameters=q, target=target))
+        return await self.request(Route("POST", "whispers", body=body, parameters=params, target=target))
 
     async def post_raid(self, target: PartialUser, from_broadcaster_id: str, to_broadcaster_id: str):
-        q = [("from_broadcaster_id", from_broadcaster_id), ("to_broadcaster_id", to_broadcaster_id)]
-        return await self.request(Route("POST", "raids", None, parameters=q, target=target))
+        params: ParameterType = [("from_broadcaster_id", from_broadcaster_id), ("to_broadcaster_id", to_broadcaster_id)]
+        return await self.request(Route("POST", "raids", None, parameters=params, target=target))
 
     async def delete_raid(self, target: PartialUser, broadcaster_id: str):
-        q = [("broadcaster_id", broadcaster_id), None]
-        return await self.request(Route("DELETE", "raids", None, parameters=q, target=target))
+        params: ParameterType= [("broadcaster_id", broadcaster_id)]
+        return await self.request(Route("DELETE", "raids", None, parameters=params, target=target))
 
     async def post_ban_timeout_user(
         self,
@@ -1248,15 +1243,15 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         moderator_id: str,
         user_id: str,
         reason: str,
-        duration: Optional[int] = None,
+        duration: int| None = None,
     ):
-        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)]
         body = {"data": {"user_id": user_id, "reason": reason}}
         if duration:
             if duration < 1 or duration > 1209600:
                 raise ValueError("Duration must be between 1 and 1209600 seconds")
             body["data"]["duration"] = str(duration)
-        return await self.request(Route("POST", "moderation/bans", body=body, parameters=q, target=target))
+        return await self.request(Route("POST", "moderation/bans", body=body, parameters=params, target=target))
 
     async def delete_ban_timeout_user(
         self,
@@ -1265,11 +1260,11 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         moderator_id: str,
         user_id: str,
     ):
-        q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id), ("user_id", user_id)]
-        return await self.request(Route("DELETE", "moderation/bans", None, parameters=q, target=target))
+        params: ParameterType = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id), ("user_id", user_id)]
+        return await self.request(Route("DELETE", "moderation/bans", None, parameters=params, target=target))
 
     async def get_follow_count(
-        self, from_id: Optional[str] = None, to_id: Optional[str] = None, target: Optional[PartialUser] = None
+        self, from_id: str | None = None, to_id: str | None = None, target: PartialUser | None = None
     ):
         return await self.request(
             Route(

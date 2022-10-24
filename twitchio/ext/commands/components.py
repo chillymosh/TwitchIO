@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 from .commands import Command
 
@@ -12,7 +12,7 @@ __all__ = ("Component",)
 
 
 class Component:
-    __commands: Dict[str, Command]
+    __commands: dict[str, Command]
     __component_name__: str
 
     def __new__(cls, *args, **kwargs):

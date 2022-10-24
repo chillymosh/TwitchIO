@@ -29,7 +29,7 @@ __all__ = (
 )
 import asyncio
 import time
-from typing import TYPE_CHECKING, Dict, Literal, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Literal, TypeVar, cast
 
 import aiohttp
 
@@ -38,7 +38,7 @@ from .utils import MISSING
 if TYPE_CHECKING:
     from .models import PartialUser, User
 
-    UserT = Union[PartialUser, User]
+    UserT = PartialUser | User
     E = TypeVar("E", bound=BaseException)
 
 
@@ -59,7 +59,7 @@ class IRCRateLimiter:
         self.per = 30 if bucket == "messages" else 10
         self.time = time.time() + self.per
 
-    def check_limit(self, *, time_: Optional[float] = None, update: bool = True) -> float:
+    def check_limit(self, *, time_: float | None = None, update: bool = True) -> float:
         """Check and update the RateLimiter."""
         time_ = time_ or time.time()
 
@@ -75,7 +75,7 @@ class IRCRateLimiter:
 
         return 0.0
 
-    async def wait_for(self, *, time_: Optional[float] = None) -> None:
+    async def wait_for(self, *, time_: float | None = None) -> None:
         """Wait for the RateLimiter to cooldown."""
         time_ = time_ or time.time()
 
@@ -134,9 +134,9 @@ class RateLimitBucket:
 
 class HTTPRateLimiter:
     def __init__(self) -> None:
-        self.buckets: Dict[Optional[UserT], RateLimitBucket] = {}
+        self.buckets: dict[UserT | None, RateLimitBucket] = {}
 
-    def get_bucket(self, user: Optional[UserT]) -> RateLimitBucket:
+    def get_bucket(self, user: UserT | None) -> RateLimitBucket:
         if user in self.buckets:
             return self.buckets[user]
 

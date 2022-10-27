@@ -38,6 +38,7 @@ from .message import Message
 from .models import *
 from .parser import IRCPayload
 from .shards import ShardInfo
+from .user import User, PartialUser, SearchUser
 from .tokens import BaseTokenHandler
 from .websocket import Websocket
 

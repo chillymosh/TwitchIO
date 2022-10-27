@@ -835,8 +835,9 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         broadcaster_id: str,
         segment_ids: list[str] | None = None,
         start_time: datetime.datetime | None = None,
-        utc_offset: int | None = None,
+        utc_offset: str | None = None,
         first: int = 20,
+        target: PartialUser | None = None,
     ) -> Any:
         if first > 25 or first < 1:
             raise ValueError("The parameter 'first' was malformed: the value must be less than or equal to 25")
@@ -845,7 +846,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if start_time:
             start_time = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")  # type: ignore
         if utc_offset:
-            utc_offset = str(utc_offset)  # type: ignore
+            utc_offset = utc_offset
         params: ParameterType = [
             x
             for x in [
@@ -860,7 +861,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         if segment_ids:
             params.extend(("id", id) for id in segment_ids)
 
-        return self.request(Route("GET", "schedule", None, parameters=params))
+        return self.request_paginated_route(Route("GET", "schedule", None, parameters=params, target=target))
 
     def get_channel_subscriptions(
         self, target: PartialUser, broadcaster_id: str, user_ids: list[str] | None = None
@@ -883,7 +884,7 @@ class HTTPHandler(Generic[TokenHandlerT, T]):
         )
 
     def get_channel_tags(self, broadcaster_id: str):
-        return self.request(Route("GET", "streams/tags", None, parameters=[("broadcaster_id", broadcaster_id)]))
+        return self.request_paginated_route(Route("GET", "streams/tags", None, parameters=[("broadcaster_id", broadcaster_id)]))
 
     def put_replace_channel_tags(
         self, target: PartialUser, broadcaster_id: str, tag_ids: list[str] | None = None

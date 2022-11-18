@@ -315,24 +315,36 @@ class TwitchHTTP:
         raise NotImplementedError  # TODO
 
     async def get_bits_board(
-        self, token: str, period: str = "all", user_id: str = None, started_at: datetime.datetime = None
+        self,
+        token: str,
+        period: str = "all",
+        user_id: Optional[str] = None,
+        started_at: Optional[datetime.datetime] = None,
     ):
         assert period in {"all", "day", "week", "month", "year"}
+        query = [
+            ("period", period),
+            ("started_at", started_at.isoformat() if started_at else None),
+            ("user_id", user_id),
+        ]
+
         route = Route(
             "GET",
             "bits/leaderboard",
             "",
-            query=[
-                ("period", period),
-                ("started_at", started_at.isoformat() if started_at else None),
-                ("user_id", user_id),
-            ],
+            query=[q for q in query if q[1] is not None],
             token=token,
         )
         return await self.request(route, full_body=True, paginate=False)
 
     async def get_cheermotes(self, broadcaster_id: str):
         return await self.request(Route("GET", "bits/cheermotes", "", query=[("broadcaster_id", broadcaster_id)]))
+
+    async def get_channel_emotes(self, broadcaster_id: str):
+        return await self.request(Route("GET", "chat/emotes", "", query=[("broadcaster_id", broadcaster_id)]))
+
+    async def get_global_emotes(self):
+        return await self.request(Route("GET", "chat/emotes/global", ""))
 
     async def get_extension_transactions(self, extension_id: str, ids: List[Any] = None):
         q = [("extension_id", extension_id)]
@@ -478,7 +490,7 @@ class TwitchHTTP:
         self,
         token: str,
         broadcaster_id: int,
-        prediction_id: str = None,
+        prediction_id: Optional[str] = None,
     ):
         params = [("broadcaster_id", str(broadcaster_id))]
 
@@ -540,11 +552,16 @@ class TwitchHTTP:
         self,
         broadcaster_id: int = None,
         game_id: str = None,
-        ids: List[str] = None,
-        started_at: datetime.datetime = None,
-        ended_at: datetime.datetime = None,
-        token: str = None,
+        ids: Optional[List[str]] = None,
+        started_at: Optional[datetime.datetime] = None,
+        ended_at: Optional[datetime.datetime] = None,
+        token: Optional[str] = None,
     ):
+        if started_at and started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=datetime.timezone.utc)
+        if ended_at and ended_at.tzinfo is None:
+            ended_at = ended_at.replace(tzinfo=datetime.timezone.utc)
+
         q = [
             ("broadcaster_id", broadcaster_id),
             ("game_id", game_id),
@@ -590,7 +607,7 @@ class TwitchHTTP:
             q.extend(("name", name) for name in game_names)
         return await self.request(Route("GET", "games", query=q))
 
-    async def get_hype_train(self, broadcaster_id: str, id: str = None, token: str = None):
+    async def get_hype_train(self, broadcaster_id: str, id: Optional[str] = None, token: str = None):
         return await self.request(
             Route(
                 "GET",
@@ -651,17 +668,17 @@ class TwitchHTTP:
 
     async def get_streams(
         self,
-        game_ids: List[str] = None,
-        user_ids: List[str] = None,
-        user_logins: List[str] = None,
-        languages: List[str] = None,
-        token: str = None,
+        game_ids: Optional[List[int]] = None,
+        user_ids: Optional[List[int]] = None,
+        user_logins: Optional[List[str]] = None,
+        languages: Optional[List[str]] = None,
+        token: Optional[str] = None,
     ):
         q = []
         if game_ids:
-            q.extend(("game_id", g) for g in game_ids)
+            q.extend(("game_id", str(g)) for g in game_ids)
         if user_ids:
-            q.extend(("user_id", u) for u in user_ids)
+            q.extend(("user_id", str(u)) for u in user_ids)
         if user_logins:
             q.extend(("user_login", l) for l in user_logins)
         if languages:
@@ -683,8 +700,14 @@ class TwitchHTTP:
             )
         )
 
-    async def get_channels(self, broadcaster_id: str, token: str = None):
+    async def get_channels(self, broadcaster_id: str, token: Optional[str] = None):
         return await self.request(Route("GET", "channels", query=[("broadcaster_id", broadcaster_id)], token=token))
+
+    async def get_channels_new(self, broadcaster_ids: List[int], token: Optional[str] = None):
+        if len(broadcaster_ids) > 100:
+            raise ValueError("Maximum of 100 broadcaster_ids")
+        q = [("broadcaster_id", str(broadcaster_id)) for broadcaster_id in broadcaster_ids]
+        return await self.request(Route("GET", "channels", query=q, token=token))
 
     async def patch_channel(
         self, token: str, broadcaster_id: str, game_id: str = None, language: str = None, title: str = None
@@ -731,13 +754,13 @@ class TwitchHTTP:
             q.extend(("id", id) for id in segment_ids)
         return await self.request(Route("GET", "schedule", query=q), paginate=False, full_body=True)
 
-    async def get_channel_subscriptions(self, token: str, broadcaster_id: str, user_ids: List[str] = None):
+    async def get_channel_subscriptions(self, token: str, broadcaster_id: str, user_ids: Optional[List[str]] = None):
         q = [("broadcaster_id", broadcaster_id)]
         if user_ids:
             q.extend(("user_id", u) for u in user_ids)
         return await self.request(Route("GET", "subscriptions", query=q, token=token))
 
-    async def get_stream_tags(self, tag_ids: List[str] = None):
+    async def get_stream_tags(self, tag_ids: Optional[List[str]] = None):
         q = []
         if tag_ids:
             q.extend(("tag_id", u) for u in tag_ids)
@@ -772,7 +795,7 @@ class TwitchHTTP:
             Route("DELETE", "users/follows", query=[("from_id", from_id), ("to_id", to_id)], token=token)
         )
 
-    async def get_users(self, ids: List[int], logins: List[str], token: str = None):
+    async def get_users(self, ids: List[int], logins: List[str], token: Optional[str] = None):
         q = []
         if ids:
             q.extend(("id", id) for id in ids)
@@ -780,7 +803,9 @@ class TwitchHTTP:
             q.extend(("login", login) for login in logins)
         return await self.request(Route("GET", "users", query=q, token=token))
 
-    async def get_user_follows(self, from_id: str = None, to_id: str = None, token: str = None):
+    async def get_user_follows(
+        self, from_id: Optional[str] = None, to_id: Optional[str] = None, token: Optional[str] = None
+    ):
         return await self.request(
             Route(
                 "GET",
@@ -850,7 +875,7 @@ class TwitchHTTP:
     async def get_webhook_subs(self):
         return await self.request(Route("GET", "webhooks/subscriptions"))
 
-    async def get_teams(self, team_name: str = None, team_id: str = None):
+    async def get_teams(self, team_name: Optional[str] = None, team_id: Optional[str] = None):
         if team_name:
             q = [("name", team_name)]
         elif team_id:
@@ -1063,3 +1088,17 @@ class TwitchHTTP:
     ):
         q = [("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id), ("user_id", user_id)]
         return await self.request(Route("DELETE", "moderation/bans", query=q, token=token))
+
+    async def get_follow_count(
+        self, from_id: Optional[str] = None, to_id: Optional[str] = None, token: Optional[str] = None
+    ):
+        return await self.request(
+            Route(
+                "GET",
+                "users/follows",
+                query=[x for x in [("from_id", from_id), ("to_id", to_id)] if x[1] is not None],
+                token=token,
+            ),
+            full_body=True,
+            paginate=False,
+        )

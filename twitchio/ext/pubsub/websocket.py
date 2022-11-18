@@ -119,7 +119,11 @@ class PubSubWebsocket:
     async def _send_topics(self, topics: List[Topic], type="LISTEN"):
         for tok, _topics in groupby(topics, key=lambda val: val.token):
             nonce = ("%032x" % uuid.uuid4().int)[:8]
-            payload = {"type": type, "data": {"topics": [x.present for x in _topics], "auth_token": tok}}
+            payload = {
+                "type": type,
+                "nonce": nonce,
+                "data": {"topics": [x.present for x in _topics], "auth_token": tok},
+            }
             logger.debug(f"Sending {type} payload with nonce '{nonce}': {payload}")
             await self.send(payload)
 
@@ -194,6 +198,9 @@ class PubSubWebsocket:
         if message["error"]:
             logger.error(f"Received errored response for nonce {message['nonce']}: {message['error']}")
             self.client.run_event("pubsub_error", message)
+        elif message["type"] == "RECONNECT":
+            logger.warning("Received RECONNECT response from pubsub edge. Reconnecting")
+            await asyncio.shield(self.reconnect())
         elif message["nonce"]:
             logger.debug(f"Received OK response for nonce {message['nonce']}")
             self.client.run_event("pubsub_nonce", message)

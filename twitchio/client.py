@@ -30,7 +30,7 @@ import traceback
 import sys
 from typing import Union, Callable, List, Optional, Tuple, Any, Coroutine, Dict
 
-from twitchio.errors import HTTPException
+from twitchio.errors import HTTPException, AuthenticationError
 from . import models
 from .websocket import WSConnection
 from .http import TwitchHTTP
@@ -99,6 +99,7 @@ class Client:
         self._events = {}
         self._waiting: List[Tuple[str, Callable[[...], bool], asyncio.Future]] = []
         self.registered_callbacks: Dict[Callable, str] = {}
+        self._closing: Optional[asyncio.Event] = None
 
     @classmethod
     def from_client_credentials(
@@ -154,12 +155,15 @@ class Client:
         connects to the twitch IRC server, and cleans up when done.
         """
         try:
-            self.loop.create_task(self.connect())
+            task = self.loop.create_task(self.connect())
+            self.loop.run_until_complete(task)  # this'll raise if the connect fails
             self.loop.run_forever()
         except KeyboardInterrupt:
             pass
         finally:
-            self.loop.run_until_complete(self.close())
+            if not self._closing.is_set():
+                self.loop.run_until_complete(self.close())
+
             self.loop.close()
 
     async def start(self):
@@ -174,14 +178,17 @@ class Client:
             )
         try:
             await self.connect()
+            await self._closing.wait()
         finally:
-            await self.close()
+            if not self._closing.is_set():
+                await self.close()
 
     async def connect(self):
         """|coro|
 
         Connects to the twitch IRC server
         """
+        self._closing = asyncio.Event()
         await self._connection._connect()
 
     async def close(self):
@@ -189,6 +196,7 @@ class Client:
 
         Cleanly disconnects from the twitch IRC server
         """
+        self._closing.set()
         await self._connection._close()
 
     def run_event(self, event_name, *args):
@@ -440,15 +448,20 @@ class Client:
         data = await self._http.get_clips(ids=ids)
         return [models.Clip(self._http, d) for d in data]
 
-    async def fetch_channel(self, broadcaster: str):
+    async def fetch_channel(self, broadcaster: str, token: Optional[str] = None):
         """|coro|
 
         Retrieve channel information from the API.
+
+        .. note::
+            This will be deprecated in 3.0. It's recommended to use :func:`~fetch_channels` instead.
 
         Parameters
         -----------
         broadcaster: str
             The channel name or ID to request from API. Returns empty dict if no channel was found.
+        token: Optional[:class:`str`]
+            An optional OAuth token to use instead of the bot OAuth token.
 
         Returns
         --------
@@ -459,9 +472,9 @@ class Client:
             get_id = await self.fetch_users(names=[broadcaster.lower()])
             if not get_id:
                 raise IndexError("Invalid channel name.")
-            broadcaster = get_id[0].id
+            broadcaster = str(get_id[0].id)
         try:
-            data = await self._http.get_channels(broadcaster)
+            data = await self._http.get_channels(broadcaster_id=broadcaster, token=token)
 
             from .models import ChannelInfo
 
@@ -469,6 +482,27 @@ class Client:
 
         except HTTPException:
             raise HTTPException("Incorrect channel ID.")
+
+    async def fetch_channels(self, broadcaster_ids: List[int], token: Optional[str] = None):
+        """|coro|
+
+        Retrieve information for up to 100 channels from the API.
+
+        Parameters
+        -----------
+        broadcaster_ids: List[:class:`int`]
+            The channel ids to request from API.
+        token: Optional[:class:`str`]
+            An optional OAuth token to use instead of the bot OAuth token
+
+        Returns
+        --------
+            List[:class:`twitchio.ChannelInfo`]
+        """
+        from .models import ChannelInfo
+
+        data = await self._http.get_channels_new(broadcaster_ids=broadcaster_ids, token=token)
+        return [ChannelInfo(self._http, data=d) for d in data]
 
     async def fetch_videos(
         self,
@@ -540,6 +574,20 @@ class Client:
         data = await self._http.get_cheermotes(str(user_id) if user_id else None)
         return [models.CheerEmote(self._http, x) for x in data]
 
+    async def fetch_global_emotes(self):
+        """|coro|
+
+        Fetches global emotes from the twitch API
+
+        Returns
+        --------
+            List[:class:`twitchio.GlobalEmote`]
+        """
+        from .models import GlobalEmote
+
+        data = await self._http.get_global_emotes()
+        return [GlobalEmote(self._http, x) for x in data]
+
     async def fetch_top_games(self) -> List[models.Game]:
         """|coro|
 
@@ -572,7 +620,7 @@ class Client:
         data = await self._http.get_games(ids, names)
         return [models.Game(d) for d in data]
 
-    async def fetch_tags(self, ids: List[str] = None):
+    async def fetch_tags(self, ids: Optional[List[str]] = None):
         """|coro|
 
         Fetches stream tags.
@@ -591,11 +639,11 @@ class Client:
 
     async def fetch_streams(
         self,
-        user_ids: List[int] = None,
-        game_ids: List[int] = None,
-        user_logins: List[str] = None,
-        languages: List[str] = None,
-        token: str = None,
+        user_ids: Optional[List[int]] = None,
+        game_ids: Optional[List[int]] = None,
+        user_logins: Optional[List[str]] = None,
+        languages: Optional[List[str]] = None,
+        token: Optional[str] = None,
     ):
         """|coro|
 
@@ -632,8 +680,8 @@ class Client:
 
     async def fetch_teams(
         self,
-        team_name: str = None,
-        team_id: str = None,
+        team_name: Optional[str] = None,
+        team_id: Optional[str] = None,
     ):
         """|coro|
 
@@ -936,6 +984,13 @@ class Client:
         """
         pass
 
+    async def event_reconnect(self):
+        """|coro|
+
+        Event called when twitch sends a RECONNECT notice.
+        The library will automatically handle reconnecting when such an event is received
+        """
+
     async def event_raw_data(self, data: str):
         """|coro|
 
@@ -967,3 +1022,16 @@ class Client:
         channel: :class:`.Channel`
             The channel that was joined.
         """
+        pass
+
+    async def event_channel_join_failure(self, channel: str):
+        """|coro|
+
+        Event called when the bot fails to join a channel.
+
+        Parameters
+        ----------
+        channel: `str`
+            The channel name that was attempted to be joined.
+        """
+        logger.error(f'The channel "{channel}" was unable to be joined. Check the channel is valid.')

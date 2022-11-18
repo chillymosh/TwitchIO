@@ -46,6 +46,16 @@ __all__ = (
 
 
 class PartialUser:
+    """
+    A class that contains minimal data about a user from the API.
+
+    Attributes
+    -----------
+    id: :class:`int`
+        The user's ID.
+    name: Optional[:class:`str`]
+        The user's name. In most cases, this is provided. There are however, rare cases where it is not.
+    """
 
     __slots__ = "id", "name", "_http", "_cached_rewards"
 
@@ -251,7 +261,11 @@ class PartialUser:
             raise
 
     async def fetch_bits_leaderboard(
-        self, token: str, period: str = "all", user_id: int = None, started_at: datetime.datetime = None
+        self,
+        token: str,
+        period: str = "all",
+        user_id: Optional[int] = None,
+        started_at: Optional[datetime.datetime] = None,
     ) -> "BitsLeaderboard":
         """|coro|
 
@@ -270,7 +284,7 @@ class PartialUser:
         """
         from .models import BitsLeaderboard
 
-        data = await self._http.get_bits_board(token, period, user_id, started_at)
+        data = await self._http.get_bits_board(token, period, str(user_id), started_at)
         return BitsLeaderboard(self._http, data)
 
     async def start_commercial(self, token: str, length: int) -> dict:
@@ -312,11 +326,22 @@ class PartialUser:
         data = await self._http.post_create_clip(token, self.id, has_delay)
         return data[0]
 
-    async def fetch_clips(self) -> List["Clip"]:
+    async def fetch_clips(
+        self, started_at: Optional[datetime.datetime] = None, ended_at: Optional[datetime.datetime] = None
+    ) -> List["Clip"]:
         """|coro|
 
         Fetches clips from the api. This will only return clips from the specified user.
         Use :class:`Client.fetch_clips` to fetch clips by id
+
+        Parameters
+        -----------
+        started_at: Optional[:class:`datetime.datetime`]
+            Starting date/time for returned clips.
+            If this is specified, ended_at also should be specified; otherwise, the ended_at date/time will be 1 week after the started_at value.
+        ended_at: Optional[:class:`datetime.datetime`]
+            Ending date/time for returned clips.
+            If this is specified, started_at also must be specified; otherwise, the time period is ignored.
 
         Returns
         --------
@@ -324,7 +349,7 @@ class PartialUser:
         """
         from .models import Clip
 
-        data = await self._http.get_clips(self.id)
+        data = await self._http.get_clips(self.id, started_at=started_at, ended_at=ended_at)
 
         return [Clip(self._http, x) for x in data]
 
@@ -464,7 +489,7 @@ class PartialUser:
         data = await self._http.get_stream_key(token, str(self.id))
         return data
 
-    async def fetch_following(self, token: str = None) -> List["FollowEvent"]:
+    async def fetch_following(self, token: Optional[str] = None) -> List["FollowEvent"]:
         """|coro|
 
         Fetches a list of users that this user is following.
@@ -483,7 +508,7 @@ class PartialUser:
         data = await self._http.get_user_follows(token=token, from_id=str(self.id))
         return [FollowEvent(self._http, d, from_=self) for d in data]
 
-    async def fetch_followers(self, token: str = None):
+    async def fetch_followers(self, token: Optional[str] = None):
         """|coro|
 
         Fetches a list of users that are following this user.
@@ -499,10 +524,10 @@ class PartialUser:
         """
         from .models import FollowEvent
 
-        data = await self._http.get_user_follows(to_id=str(self.id))
+        data = await self._http.get_user_follows(token=token, to_id=str(self.id))
         return [FollowEvent(self._http, d, to=self) for d in data]
 
-    async def fetch_follow(self, to_user: "PartialUser", token: str = None):
+    async def fetch_follow(self, to_user: "PartialUser", token: Optional[str] = None):
         """|coro|
 
         Check if a user follows another user or when they followed a user.
@@ -521,8 +546,57 @@ class PartialUser:
             raise TypeError(f"to_user must be a PartialUser not {type(to_user)}")
         from .models import FollowEvent
 
-        data = await self._http.get_user_follows(from_id=str(self.id), to_id=str(to_user.id))
+        data = await self._http.get_user_follows(token=token, from_id=str(self.id), to_id=str(to_user.id))
         return FollowEvent(self._http, data[0]) if data else None
+
+    async def fetch_follower_count(self, token: Optional[str] = None) -> int:
+        """|coro|
+
+        Fetches a list of users that are following this user.
+
+        Parameters
+        -----------
+        token: Optional[:class:`str`]
+            An oauth token to use instead of the bots token
+
+        Returns
+        --------
+            :class:`int`
+        """
+
+        data = await self._http.get_follow_count(token=token, to_id=str(self.id))
+        return data["total"]
+
+    async def fetch_following_count(self, token: Optional[str] = None) -> int:
+        """|coro|
+
+        Fetches a list of users that this user is following.
+
+        Parameters
+        -----------
+        token: Optional[:class:`str`]
+            An oauth token to use instead of the bots token
+
+        Returns
+        --------
+            :class:`int`
+        """
+        data = await self._http.get_follow_count(token=token, from_id=str(self.id))
+        return data["total"]
+
+    async def fetch_channel_emotes(self):
+        """|coro|
+
+        Fetches channel emotes from the user
+
+        Returns
+        --------
+            List[:class:`twitchio.ChannelEmote`]
+        """
+        from .models import ChannelEmote
+
+        data = await self._http.get_channel_emotes(str(self.id))
+        return [ChannelEmote(self._http, x) for x in data]
 
     async def follow(self, userid: int, token: str, *, notifications=False):
         """|coro|
@@ -556,7 +630,7 @@ class PartialUser:
         """
         await self._http.delete_unfollow_channel(token, from_id=str(userid), to_id=str(self.id))
 
-    async def fetch_subscriptions(self, token: str, userids: List[int] = None):
+    async def fetch_subscriptions(self, token: str, userids: Optional[List[int]] = None):
         """|coro|
 
         Fetches the subscriptions for this channel.
@@ -1348,6 +1422,8 @@ class PartialUser:
         moderator_id: :class:`int`
             The ID of a user that has permission to moderate the broadcaster's chat room.
             If the broadcaster wants to timeout the user set this parameter to the broadcaster's ID.
+        user_id: :class:`int`
+            The ID of the user that you wish to timeout.
         duration: :class:`int`
             The duration of the timeout in seconds.
             The minimum timeout is 1 second and the maximum is 1,209,600 seconds (2 weeks).
@@ -1492,6 +1568,44 @@ class SearchUser(PartialUser):
 
 
 class User(PartialUser):
+    """
+    A full user object, containing data from the users endpoint.
+
+    Attributes
+    -----------
+    id: :class:`int`
+        The user's ID
+    name: :class:`str`
+        The user's login name
+    display_name: :class:`str`
+        The name that is displayed in twitch chat. For the most part, this is simply a change of capitalization
+    type: :class:`~twitchio.UserTypeEnum`
+        The user's type. This will normally be :class:`~twitchio.UserTypeEnum.none`, unless they are twitch staff or admin
+    broadcaster_type: :class:`~twitchio.BroadcasterTypeEnum`
+        What type of broacaster the user is. none, affiliate, or partner
+    description: :class:`str`
+        The user's bio
+    profile_image: :class:`str`
+        The user's profile image URL
+    offline_image: :class:`str`
+        The user's offline image splash URL
+    view_count: Tuple[int]
+        The amount of views this channel has
+
+        .. warning::
+
+            This field has been deprecated by twitch, and is no longer updated.
+            See `here <https://discuss.dev.twitch.tv/t/get-users-api-endpoint-view-count-deprecation/37777>`_ for more information.
+
+        .. note::
+
+            This field is a tuple due to a mistake when creating the models.
+            Due to semver principals, this cannot be fixed until version 3.0 (at which time we will be removing the field entirely).
+    created_at: :class:`datetime.datetime`
+        When the user created their account
+    email: Optional[class:`str`]
+        The user's email. This is only returned if you have the ``user:read:email`` scope on the token used to make the request
+    """
 
     __slots__ = (
         "_http",
@@ -1519,7 +1633,9 @@ class User(PartialUser):
         self.description: str = data["description"]
         self.profile_image: str = data["profile_image_url"]
         self.offline_image: str = data["offline_image_url"]
-        self.view_count: Tuple[int] = (data["view_count"],)  # this isn't supposed to be a tuple but too late to fix it!
+        self.view_count: Tuple[int] = (
+            data.get("view_count", 0),
+        )  # this isn't supposed to be a tuple but too late to fix it!
         self.created_at = parse_timestamp(data["created_at"])
         self.email: Optional[str] = data.get("email")
         self._cached_rewards = None

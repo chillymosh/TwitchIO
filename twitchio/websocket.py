@@ -122,9 +122,16 @@ class WSConnection:
         if self.is_alive:
             await self._websocket.close()  # If for some reason we are in a weird state, close it before retrying.
         if not self._client._http.nick:
-            data = await self._client._http.validate(token=self._token)
+            try:
+                data = await self._client._http.validate(token=self._token)
+            except AuthenticationError:
+                await self._client._http.session.close()
+                self._client._closing.set()  # clean up and error out (this is called to avoid calling Client.close in start()
+                raise
             self.nick = data["login"]
             self.user_id = int(data["user_id"])
+        else:
+            self.nick = self._client._http.nick
         session = self._client._http.session
 
         try:
@@ -135,10 +142,9 @@ class WSConnection:
 
             await asyncio.sleep(retry)
             return asyncio.create_task(self._connect())
-        if time.time() > self._last_ping + 240 or self._reconnect_requested:
-            # Re-authenticate as we have surpassed a PING request or Twitch issued a RECONNECT.
-            await self.authenticate(self._initial_channels)
-            self._reconnect_requested = False
+
+        await self.authenticate(self._initial_channels)
+
         self._keeper = asyncio.create_task(self._keep_alive())  # Create our keep alive.
         self._ws_ready_event.set()
 
@@ -148,7 +154,7 @@ class WSConnection:
 
         if not self._last_ping:
             self._last_ping = time.time()
-        while not self._websocket.closed:
+        while not self._websocket.closed and not self._reconnect_requested:
             msg = await self._websocket.receive()  # Receive data...
 
             if msg.type is aiohttp.WSMsgType.CLOSED:
@@ -165,6 +171,7 @@ class WSConnection:
                         continue
                     task = asyncio.create_task(self._process_data(event))
                     task.add_done_callback(partial(self._task_callback, event))  # Process our raw data
+
         asyncio.create_task(self._connect())
 
     def _task_callback(self, data, task):
@@ -293,7 +300,7 @@ class WSConnection:
         try:
             await asyncio.wait_for(fut, timeout=timeout)
         except asyncio.TimeoutError:
-            log.error(f'The channel "{channel}" was unable to be joined. Check the channel is valid.')
+            self.dispatch("channel_join_failure", channel)
             self._join_pending.pop(channel)
 
             data = (
@@ -342,7 +349,7 @@ class WSConnection:
             self.dispatch("ready")
             self._init = True
         elif code == 353:
-            if parsed["channel"] == "TWITCHIOFAILURE":
+            if parsed["channel"] == "TWITCHIOFAILURE" and parsed["batches"][0] in self._initial_channels:
                 self._initial_channels.remove(parsed["batches"][0])
             if parsed["channel"] in [c.lower().lstrip("#") for c in self._initial_channels] and not self._init:
                 self._join_load[parsed["channel"]] = None
@@ -385,7 +392,10 @@ class WSConnection:
             self._cache.pop(channel, None)
         channel = Channel(name=channel, websocket=self)
         user = Chatter(name=parsed["user"], bot=self._client, websocket=self, channel=channel, tags=parsed["badges"])
-
+        try:
+            self._cache[channel.name].discard(user)
+        except KeyError:
+            pass
         self.dispatch("part", user)
 
     async def _privmsg(self, parsed):  # TODO(Update Cache properly)
@@ -437,7 +447,8 @@ class WSConnection:
 
         channel = Channel(name=parsed["channel"], websocket=self)
         rawData = parsed["groups"][0]
-        tags = dict(x.split("=") for x in rawData.split(";"))
+        tags = dict(x.split("=", 1) for x in rawData.split(";"))
+        tags["user-type"] = tags["user-type"].split(":tmi.twitch.tv")[0].strip()
 
         self.dispatch("raw_usernotice", channel, tags)
 
@@ -486,6 +497,9 @@ class WSConnection:
     async def _reconnect(self, parsed):
         log.debug("ACTION: RECONNECT:: Twitch has gracefully closed the connection and will reconnect.")
         self._reconnect_requested = True
+        self._keeper.cancel()
+        self._loop.create_task(self._connect())
+        self.dispatch("reconnect")
 
     def dispatch(self, event: str, *args, **kwargs):
         log.debug(f"Dispatching event: {event}")

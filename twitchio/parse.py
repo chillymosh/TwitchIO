@@ -26,6 +26,7 @@ DEALINGS IN THE SOFTWARE.
 
 import re
 import typing
+import logging
 
 if typing.TYPE_CHECKING:
     from .websocket import WSConnection
@@ -38,13 +39,15 @@ ACTIONS = (
     "PRIVMSG(ECHO)",
     "USERSTATE",
     "MODE",
-    "RECONNECT",
     "WHISPER",
     "USERNOTICE",
 )
 ACTIONS2 = ("USERSTATE", "ROOMSTATE", "PRIVMSG", "USERNOTICE", "WHISPER")
 USER_SUB = re.compile(r":(?P<user>.*)!")
-TMI = "tmi.twitch.tv"
+MESSAGE_RE = re.compile(r":(?P<useraddr>\S+) (?P<action>\S+) (?P<channel>\S+)( :(?P<message>.*))?$")
+FAST_RETURN = {"RECONNECT": {"code": 0, "action": "RECONNECT"}, "PING": {"action": "PING"}}
+
+logger = logging.getLogger("twitchio.parser")
 
 
 def parser(data: str, nick: str):
@@ -55,33 +58,30 @@ def parser(data: str, nick: str):
     user = None
     badges = None
 
-    if action == "PING":
-        return dict(action="PING")
+    _group_len = len(groups)
 
-    elif groups[2] in {"PRIVMSG", "PRIVMSG(ECHO)"}:
-        action = groups[2]
-        channel = groups[3].lstrip("#")
-        message = " ".join(groups[4:]).lstrip(":")
-        user = re.search(USER_SUB, groups[1]).group("user")
+    if action in FAST_RETURN:
+        return FAST_RETURN[action]
 
-    elif groups[2] == "WHISPER":
-        action = groups[2]
-        message = " ".join(groups[4:]).lstrip(":")
-        user = re.search(USER_SUB, groups[1]).group("user")
+    elif groups[1] in FAST_RETURN:
+        return FAST_RETURN[groups[1]]
 
-    elif groups[2] == "USERNOTICE":
-        action = groups[2]
-        channel = groups[3].lstrip("#")
-        message = " ".join(groups[4:]).lstrip(":")
+    elif (
+        groups[1] in ACTIONS
+        or (_group_len > 2 and groups[2] in ACTIONS)
+        or (_group_len > 3 and groups[3] in {"PRIVMSG", "PRIVMSG(ECHO)"})
+    ):
+        result = re.search(MESSAGE_RE, data)
+        if not result:
+            logger.error("****** MESSAGE_RE Failed! ******")
+            return None  # raise exception?
+        user = result.group("useraddr").split("!")[0]
+        action = result.group("action")
+        channel = result.group("channel").lstrip("#")
+        message = result.group("message")
 
-    elif action in ACTIONS:
-        channel = groups[-1].lstrip("#")
-
-    elif groups[3] in {"PRIVMSG", "PRIVMSG(ECHO)"}:
-        action = groups[3]
-        channel = groups[4].lstrip("#")
-        message = " ".join(groups[5:]).lstrip(":")
-        user = re.search(USER_SUB, groups[2]).group("user")
+    if action == "WHISPER":
+        channel = None
 
     if action in ACTIONS2:
         prebadge = groups[0].split(";")
@@ -94,6 +94,12 @@ def parser(data: str, nick: str):
                 badges[badge[0]] = badge[1]
             except IndexError:
                 pass
+
+    if action == "USERSTATE" and badges.get("display-name"):
+        user = badges.get("display-name").lower()
+
+    if action == "USERNOTICE" and badges.get("login"):
+        user = badges.get("login").lower()
 
     if action not in ACTIONS and action not in ACTIONS2:
         action = None
@@ -111,11 +117,17 @@ def parser(data: str, nick: str):
 
     batches = []
     if code == 353:
-        if not channel:
-            channel = groups[4].lstrip("#")
+        channel = groups[4]
+        if channel[0] == "#":
+            channel = channel[1:]
+        else:
+            logger.warning(f" (353) parse failed? ||{channel}||")
 
+    if user is None:
+        user = groups[-1][1:].lower()
         for b in groups[5:-1]:
-            b = b.lstrip(":")
+            if b[0] == ":":
+                b = b[1:]
 
             if "\r\n:" in b:
                 batches.append(b.split("\r\n:")[0])

@@ -4,12 +4,12 @@ import hmac
 import hashlib
 import logging
 from enum import Enum
-from typing import Dict, TYPE_CHECKING, Optional, Type, Union
+from typing import Dict, TYPE_CHECKING, Optional, Type, Union, Tuple, List
 from typing_extensions import Literal
 
 from aiohttp import web
 
-from twitchio import CustomReward, PartialUser, parse_timestamp as _parse_datetime
+from twitchio import PartialUser, parse_timestamp as _parse_datetime
 
 if TYPE_CHECKING:
     from .server import EventSubClient
@@ -238,6 +238,102 @@ class ChannelSubscribeData(EventData):
         self.is_gift: bool = data["is_gift"]
 
 
+class ChannelSubscriptionEndData(EventData):
+    """
+    A Subscription End event
+
+    Attributes
+    -----------
+    user: :class:`twitchio.PartialUser`
+        The user who subscribed
+    broadcaster: :class:`twitchio.PartialUser`
+        The channel that was subscribed to
+    tier: :class:`int`
+        The tier of the subscription
+    is_gift: :class:`bool`
+        Whether the subscription was a gift or not
+    """
+
+    __slots__ = "user", "broadcaster", "tier", "is_gift"
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.user = _transform_user(client, data, "user")
+        self.broadcaster = _transform_user(client, data, "broadcaster_user")
+        self.tier = int(data["tier"])
+        self.is_gift: bool = data["is_gift"]
+
+
+class ChannelSubscriptionGiftData(EventData):
+    """
+    A Subscription Gift event
+    Explicitly, the act of giving another user a Subscription.
+    Receiving a gift-subscription uses ChannelSubscribeData above, with is_gift is ``True``
+
+    Attributes
+    -----------
+    is_anonymous: :class:`bool`
+        Whether the gift sub was anonymous
+    user: Optional[:class:`twitchio.PartialUser`]
+        The user that gifted subs. Will be ``None`` if ``is_anonymous`` is ``True``
+    broadcaster: :class:`twitchio.PartialUser`
+        The channel that was subscribed to
+    tier: :class:`int`
+        The tier of the subscription
+    total: :class:`int`
+        The total number of subs gifted by a user at once
+    cumulative_total: Optional[:class:`int`]
+        The total number of subs gifted by a user overall. Will be ``None`` if ``is_anonymous`` is ``True``
+    """
+
+    __slots__ = "is_anonymous", "user", "broadcaster", "tier", "total", "cumulative_total"
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.is_anonymous: bool = data["is_anonymous"]
+        self.user: Optional[PartialUser] = None if self.is_anonymous else _transform_user(client, data, "user")
+        self.broadcaster: Optional[PartialUser] = _transform_user(client, data, "broadcaster_user")
+        self.tier = int(data["tier"])
+        self.total = int(data["total"])
+        self.cumulative_total: Optional[int] = None if self.is_anonymous else int(data["cumulative_total"])
+
+
+class ChannelSubscriptionMessageData(EventData):
+    """
+    A Subscription Message event.
+    A combination of resubscriptions + the messages users type as part of the resub.
+
+    Attributes
+    -----------
+    user: :class:`twitchio.PartialUser`
+        The user who subscribed
+    broadcaster: :class:`twitchio.PartialUser`
+        The channel that was subscribed to
+    tier: :class:`int`
+        The tier of the subscription
+    message: :class:`str`
+        The user's resubscription message
+    emote_data: :class:`list`
+        emote data within the user's resubscription message. Not the emotes themselves
+    cumulative_months: :class:`int`
+        The total number of months a user has subscribed to the channel
+    streak: Optional[:class:`int`]
+        The total number of months subscribed in a row. ``None`` if the user declines to share it.
+    duration: :class:`int`
+        The length of the subscription. Typically 1, but some users may buy subscriptions for several months.
+    """
+
+    __slots__ = "user", "broadcaster", "tier", "message", "emote_data", "cumulative_months", "streak", "duration"
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.user = _transform_user(client, data, "user")
+        self.broadcaster = _transform_user(client, data, "broadcaster_user")
+        self.tier = int(data["tier"])
+        self.message: str = data["message"]["text"]
+        self.emote_data: List[Dict] = data["message"].get("emotes", [])
+        self.cumulative_months: int = data["cumulative_months"]
+        self.streak: Optional[int] = data["streak_months"]
+        self.duration: int = data["duration_months"]
+
+
 class ChannelCheerData(EventData):
     """
     A Cheer event
@@ -382,6 +478,109 @@ class ChannelModeratorAddRemoveData(EventData):
         self.broadcaster = _transform_user(client, data, "broadcaster_user")
 
 
+class CustomReward:
+    """
+    A Custom Reward
+
+    Attributes
+    -----------
+    broadcaster: :class:`twitchio.PartialUser`
+        The channel that has this reward
+    id: :class:`str`
+        The ID of the reward
+    title: :class:`str`
+        The title of the reward
+    cost: :class:`int`
+        The cost of the reward in Channel Points
+    prompt: :class:`str`
+        The prompt of the reward
+    enabled: Optional[:class:`bool`]
+        Whether or not the reward is enabled. Will be `None` for Redemption events.
+    paused: Optional[:class:`bool`]
+        Whether or not the reward is paused. Will be `None` for Redemption events.
+    in_stock: Optional[:class:`bool`]
+        Whether or not the reward is in stock. Will be `None` for Redemption events.
+    cooldown_until: Optional[:class:`datetime.datetime`]
+        How long until the reward is off cooldown and can be redeemed again. Will be `None` for Redemption events.
+    input_required: Optional[:class:`bool`]
+        Whether or not the reward requires an input. Will be `None` for Redemption events.
+    redemptions_skip_queue: Optional[:class:`bool`]
+        Whether or not redemptions for this reward skips the queue. Will be `None` for Redemption events.
+    redemptions_current_stream: Optional[:class:`int`]
+        How many redemptions of this reward have been redeemed for this stream. Will be `None` for Redemption events.
+    max_per_stream: Tuple[:class:`bool`, :class:`int`]
+        Whether or not a per-stream redemption limit is in place, and if so, the maximum number of redemptions allowed
+        per stream. Will be `None` for Redemption events.
+    max_per_user_per_stream: Tuple[:class:`bool`, :class:`int`]
+        Whether or not a per-user-per-stream redemption limit is in place, and if so, the maximum number of redemptions
+        allowed per user per stream. Will be `None` for Redemption events.
+    cooldown: Tuple[:class:`bool`, :class:`int`]
+        Whether or not a global cooldown is in place, and if so, the number of seconds until the reward can be redeemed
+        again. Will be `None` for Redemption events.
+    background_color: Optional[:class:`str`]
+        Hexadecimal color code for the background of the reward.
+    image: Optional[:class:`str`]
+        Image URL for the reward.
+    """
+
+    __slots__ = (
+        "broadcaster",
+        "id",
+        "title",
+        "cost",
+        "prompt",
+        "enabled",
+        "paused",
+        "in_stock",
+        "cooldown_until",
+        "input_required",
+        "redemptions_skip_queue",
+        "redemptions_current_stream",
+        "max_per_stream",
+        "max_per_user_stream",
+        "cooldown",
+        "background_color",
+        "image",
+    )
+
+    def __init__(self, data, broadcaster):
+        self.broadcaster: PartialUser = broadcaster
+
+        self.id: str = data["id"]
+
+        self.title: str = data["title"]
+        self.cost: int = data["cost"]
+        self.prompt: str = data["prompt"]
+
+        self.enabled: Optional[bool] = data.get("is_enabled", None)
+        self.paused: Optional[bool] = data.get("is_paused", None)
+        self.in_stock: Optional[bool] = data.get("is_in_stock", None)
+
+        self.cooldown_until: Optional[datetime.datetime] = (
+            _parse_datetime(data["cooldown_expires_at"]) if data.get("cooldown_expires_at", None) else None
+        )
+
+        self.input_required: Optional[bool] = data.get("is_user_input_required", None)
+        self.redemptions_skip_queue: Optional[bool] = data.get("should_redemptions_skip_request_queue", None)
+        self.redemptions_current_stream: Optional[bool] = data.get("redemptions_redeemed_current_stream", None)
+
+        self.max_per_stream: Tuple[Optional[bool], Optional[int]] = (
+            data.get("max_per_stream", {}).get("is_enabled"),
+            data.get("max_per_stream", {}).get("value"),
+        )
+        self.max_per_user_stream: Tuple[Optional[bool], Optional[int]] = (
+            data.get("max_per_user_per_stream", {}).get("is_enabled"),
+            data.get("max_per_user_per_stream", {}).get("value"),
+        )
+        self.cooldown: Tuple[Optional[bool], Optional[int]] = (
+            data.get("global_cooldown", {}).get("is_enabled"),
+            data.get("global_cooldown", {}).get("seconds"),
+        )
+
+        self.background_color: Optional[str] = data.get("background_color", None)
+        self.image: Optional[str] = data.get("image", data.get("default_image", {})).get("url_1x", None)
+
+
 class CustomRewardAddUpdateRemoveData(EventData):
     """
     A Custom Reward Add/Update/Remove event
@@ -392,7 +591,7 @@ class CustomRewardAddUpdateRemoveData(EventData):
         The ID of the custom reward
     broadcaster: :class:`twitchio.PartialUser`
         The channel the custom reward was modified in
-    reward: :class:`twitchio.CustomReward`
+    reward: :class:`CustomReward`
         The reward object
     """
 
@@ -401,7 +600,7 @@ class CustomRewardAddUpdateRemoveData(EventData):
     def __init__(self, client: EventSubClient, data: dict):
         self.id: str = data["id"]
         self.broadcaster = _transform_user(client, data, "broadcaster_user")
-        self.reward = CustomReward(client.client._http, data, self.broadcaster)
+        self.reward = CustomReward(data, self.broadcaster)
 
 
 class CustomRewardRedemptionAddUpdateData(EventData):
@@ -422,7 +621,7 @@ class CustomRewardRedemptionAddUpdateData(EventData):
         One of "unknown", "unfulfilled", "fulfilled", or "cancelled"
     redeemed_at: :class:`datetime.datetime`
         When the reward was redeemed at
-    reward: :class:`twitchio.CustomReward`
+    reward: :class:`CustomReward`
         The reward object
     """
 
@@ -435,7 +634,7 @@ class CustomRewardRedemptionAddUpdateData(EventData):
         self.input: str = data["user_input"]
         self.status: Literal["unknown", "unfulfilled", "fulfilled", "cancelled"] = data["status"]
         self.redeemed_at = _parse_datetime(data["redeemed_at"])
-        self.reward = CustomReward(client.client._http, data["reward"], self.broadcaster)
+        self.reward = CustomReward(data["reward"], self.broadcaster)
 
 
 class HypeTrainContributor:
@@ -447,7 +646,7 @@ class HypeTrainContributor:
     user: :class:`twitchio.PartialUser`
         The user
     type: :class:`str`
-        One of "bits" or "subscription". The way they contributed to the hype train
+        One of "bits, "subscription" or "other". The way they contributed to the hype train
     total: :class:`int`
         How many points they've contributed to the Hype Train
     """
@@ -456,7 +655,7 @@ class HypeTrainContributor:
 
     def __init__(self, client: EventSubClient, data: dict):
         self.user = _transform_user(client, data, "user")
-        self.type: Literal["bits", "subscription"] = data["type"]  # one of bits, subscription
+        self.type: Literal["bits", "subscription", "other"] = data["type"]  # one of bits, subscription
         self.total: int = data["total"]
 
 
@@ -483,6 +682,8 @@ class HypeTrainBeginProgressData(EventData):
         The top contributions of the Hype Train
     last_contribution: :class:`HypeTrainContributor`
         The last contributor to the Hype Train
+    level: :class:`int`
+        The current level of the Hype Train
     """
 
     __slots__ = (
@@ -494,6 +695,7 @@ class HypeTrainBeginProgressData(EventData):
         "last_contribution",
         "started",
         "expires",
+        "level",
     )
 
     def __init__(self, client: EventSubClient, data: dict):
@@ -502,9 +704,10 @@ class HypeTrainBeginProgressData(EventData):
         self.progress: int = data["progress"]
         self.goal: int = data["goal"]
         self.started = _parse_datetime(data["started_at"])
-        self.expires = _parse_datetime(data["expire_at"])
+        self.expires = _parse_datetime(data["expires_at"])
         self.top_contributions = [HypeTrainContributor(client, d) for d in data["top_contributions"]]
         self.last_contribution = HypeTrainContributor(client, data["last_contribution"])
+        self.level: int = data["level"]
 
 
 class HypeTrainEndData(EventData):
@@ -551,6 +754,12 @@ class PollChoice:
         The title of the choice
     bits_votes: :class:`int`
         How many votes were cast using Bits
+
+        .. warning::
+
+            Twitch have removed support for voting with bits.
+            This will return as 0
+
     channel_points_votes: :class:`int`
         How many votes were cast using Channel Points
     votes: :class:`int`
@@ -577,6 +786,12 @@ class BitsVoting:
         Whether users can use Bits to vote on the poll
     amount_per_vote: :class:`int`
         How many Bits are required to cast an extra vote
+
+        .. warning::
+
+            Twitch have removed support for voting with bits.
+            This will return as False and 0 respectively
+
     """
 
     __slots__ = "is_enabled", "amount_per_vote"
@@ -641,6 +856,11 @@ class PollBeginProgressData(EventData):
         The choices in the poll
     bits_voting: :class:`BitsVoting`
         Information on voting on the poll with Bits
+
+        .. warning::
+
+            Twitch have removed support for voting with bits.
+
     channel_points_voting: :class:`ChannelPointsVoting`
         Information on voting on the poll with Channel Points
     started_at: :class:`datetime.datetime`
@@ -688,6 +908,11 @@ class PollEndData(EventData):
         The choices in the poll
     bits_voting: :class:`BitsVoting`
         Information on voting on the poll with Bits
+
+        .. warning::
+
+            Twitch have removed support for voting with bits.
+
     channel_points_voting: :class:`ChannelPointsVoting`
         Information on voting on the poll with Channel Points
     status: :class:`PollStatus`
@@ -945,6 +1170,25 @@ class StreamOfflineData(EventData):
         self.broadcaster = _transform_user(client, data, "broadcaster_user")
 
 
+class UserAuthorizationGrantedData(EventData):
+    """
+    An Authorization Granted event
+
+    Attributes
+    -----------
+    user: :class:`twitchio.PartialUser`
+        The user that has granted authorization for your app
+    client_id: :class:`str`
+        The client id of the app that had its authorization granted
+    """
+
+    __slots__ = "client_id", "user"
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.user = _transform_user(client, data, "user")
+        self.client_id: str = data["client_id"]
+
+
 class UserAuthorizationRevokedData(EventData):
     """
     An Authorization Revokation event
@@ -986,15 +1230,104 @@ class UserUpdateData(EventData):
         self.description: str = data["description"]
 
 
+class ChannelGoalBeginProgressData(EventData):
+    """
+    A goal begin event
+
+    Attributes
+    -----------
+    user: :class:`twitchio.PartialUser`
+        The broadcaster that started the goal
+    id : :class:`str`
+        The ID of the goal event
+    type: :class:`str`
+        The goal type
+    description: :class:`str`
+        The goal description
+    current_amount: :class:`int`
+        The goal current amount
+    target_amount: :class:`int`
+        The goal target amount
+    started_at: :class:`datetime.datetime`
+        The datetime the goal was started
+    """
+
+    __slots__ = "user", "id", "type", "description", "current_amount", "target_amount", "started_at"
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.user = _transform_user(client, data, "broadcaster_user")
+        self.id: str = data["id"]
+        self.type: str = data["type"]
+        self.description: str = data["description"]
+        self.current_amount: int = data["current_amount"]
+        self.target_amount: int = data["target_amount"]
+        self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+
+
+class ChannelGoalEndData(EventData):
+    """
+    A goal end event
+
+    Attributes
+    -----------
+    user: :class:`twitchio.PartialUser`
+        The broadcaster that ended the goal
+    id : :class:`str`
+        The ID of the goal event
+    type: :class:`str`
+        The goal type
+    description: :class:`str`
+        The goal description
+    is_achieved: :class:`bool`
+        Whether the goal is achieved
+    current_amount: :class:`int`
+        The goal current amount
+    target_amount: :class:`int`
+        The goal target amount
+    started_at: :class:`datetime.datetime`
+        The datetime the goal was started
+    ended_at: :class:`datetime.datetime`
+        The datetime the goal was ended
+    """
+
+    __slots__ = (
+        "user",
+        "id",
+        "type",
+        "description",
+        "current_amount",
+        "target_amount",
+        "started_at",
+        "is_achieved",
+        "ended_at",
+    )
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.user = _transform_user(client, data, "broadcaster_user")
+        self.id: str = data["id"]
+        self.type: str = data["type"]
+        self.description: str = data["description"]
+        self.is_achieved: bool = data["is_achieved"]
+        self.current_amount: int = data["current_amount"]
+        self.target_amount: int = data["target_amount"]
+        self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+        self.ended_at: datetime.datetime = _parse_datetime(data["ended_at"])
+
+
 _DataType = Union[
     ChannelBanData,
     ChannelUnbanData,
     ChannelSubscribeData,
+    ChannelSubscriptionEndData,
+    ChannelSubscriptionGiftData,
+    ChannelSubscriptionMessageData,
     ChannelCheerData,
     ChannelUpdateData,
     ChannelFollowData,
     ChannelRaidData,
     ChannelModeratorAddRemoveData,
+    ChannelGoalBeginProgressData,
+    ChannelGoalEndData,
     CustomRewardAddUpdateRemoveData,
     CustomRewardRedemptionAddUpdateData,
     HypeTrainBeginProgressData,
@@ -1006,6 +1339,7 @@ _DataType = Union[
     PredictionEndData,
     StreamOnlineData,
     StreamOfflineData,
+    UserAuthorizationGrantedData,
     UserAuthorizationRevokedData,
     UserUpdateData,
 ]
@@ -1024,6 +1358,9 @@ class _SubscriptionTypes(metaclass=_SubTypesMeta):
 
     follow = "channel.follow", 1, ChannelFollowData
     subscription = "channel.subscribe", 1, ChannelSubscribeData
+    subscription_end = "channel.subscription.end", 1, ChannelSubscriptionEndData
+    subscription_gift = "channel.subscription.gift", 1, ChannelSubscriptionGiftData
+    subscription_message = "channel.subscription.message", 1, ChannelSubscriptionMessageData
     cheer = "channel.cheer", 1, ChannelCheerData
     raid = "channel.raid", 1, ChannelRaidData
     ban = "channel.ban", 1, ChannelBanData
@@ -1046,6 +1383,10 @@ class _SubscriptionTypes(metaclass=_SubTypesMeta):
         CustomRewardRedemptionAddUpdateData,
     )
 
+    channel_goal_begin = "channel.goal.begin", 1, ChannelGoalBeginProgressData
+    channel_goal_progress = "channel.goal.progress", 1, ChannelGoalBeginProgressData
+    channel_goal_end = "channel.goal.end", 1, ChannelGoalEndData
+
     hypetrain_begin = "channel.hype_train.begin", 1, HypeTrainBeginProgressData
     hypetrain_progress = "channel.hype_train.progress", 1, HypeTrainBeginProgressData
     hypetrain_end = "channel.hype_train.end", 1, HypeTrainEndData
@@ -1062,6 +1403,7 @@ class _SubscriptionTypes(metaclass=_SubTypesMeta):
     stream_start = "stream.online", 1, StreamOnlineData
     stream_end = "stream.offline", 1, StreamOfflineData
 
+    user_authorization_grant = "user.authorization.grant", 1, UserAuthorizationGrantedData
     user_authorization_revoke = "user.authorization.revoke", 1, UserAuthorizationRevokedData
 
     user_update = "user.update", 1, UserUpdateData

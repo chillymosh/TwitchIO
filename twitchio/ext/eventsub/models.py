@@ -1428,6 +1428,7 @@ class ChannelShoutoutReceiveData(EventData):
         self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
         self.viewer_count: int = data["viewer_count"]
 
+
 class ChannelGuestSessionBeginData(EventData):
     """
     Represents a Guest Star session start event.
@@ -1450,6 +1451,7 @@ class ChannelGuestSessionBeginData(EventData):
         self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
         self.session_id: str = data["session_id"]
         self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+
 
 class ChannelGuestSessionUpdateData(EventData):
     """
@@ -1478,10 +1480,13 @@ class ChannelGuestSessionUpdateData(EventData):
 
     def __init__(self, client: EventSubClient, data: dict):
         self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
-        self.moderator: Optional[PartialUser] = _transform_user(client, data, "moderator_user") if data["moderator_user_id"] else None
+        self.moderator: Optional[PartialUser] = (
+            _transform_user(client, data, "moderator_user") if data["moderator_user_id"] else None
+        )
         self.guest: PartialUser = _transform_user(client, data, "guest_user")
         self.session_id: str = data["session_id"]
         self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+
 
 class ChannelGuestSessionEndData(EventData):
     """
@@ -1508,6 +1513,7 @@ class ChannelGuestSessionEndData(EventData):
         self.session_id: str = data["session_id"]
         self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
         self.ended_at: datetime.datetime = _parse_datetime(data["ended_at"])
+
 
 class ChannelGuestSlotpdateData(EventData):
     """
@@ -1536,17 +1542,29 @@ class ChannelGuestSlotpdateData(EventData):
 
     """
 
-    __slots__ = ("broadcaster", "session_id", "moderator", "guest", "slot_id", "host_video_enabled", "host_audio_enabled", "host_volume")
+    __slots__ = (
+        "broadcaster",
+        "session_id",
+        "moderator",
+        "guest",
+        "slot_id",
+        "host_video_enabled",
+        "host_audio_enabled",
+        "host_volume",
+    )
 
     def __init__(self, client: EventSubClient, data: dict):
         self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
         self.moderator: PartialUser = _transform_user(client, data, "moderator_user")
-        self.guest: Optional[PartialUser] = _transform_user(client, data, "guest_user") if data["guest_user_id"] else None
+        self.guest: Optional[PartialUser] = (
+            _transform_user(client, data, "guest_user") if data["guest_user_id"] else None
+        )
         self.session_id: str = data["session_id"]
         self.slot_id: str = data["slot_id"]
         self.host_video_enabled: bool = bool(data["slot_id"])
         self.host_audio_enabled: bool = bool(data["slot_id"])
         self.host_volume: int = int(data["slot_id"])
+
 
 class ChannelGuestSettingsUpdateData(EventData):
     """
@@ -1569,14 +1587,21 @@ class ChannelGuestSettingsUpdateData(EventData):
        tiled or screenshare
     """
 
-    __slots__ = ("broadcaster", "slot_count", "is_moderator_send_live_enabled", "is_browser_source_audio_enabled", "group_layout")
+    __slots__ = (
+        "broadcaster",
+        "slot_count",
+        "is_moderator_send_live_enabled",
+        "is_browser_source_audio_enabled",
+        "group_layout",
+    )
 
     def __init__(self, client: EventSubClient, data: dict):
         self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
         self.group_layout: str = data["group_layout"]
         self.is_moderator_send_live_enabled: bool = bool(data["is_moderator_send_live_enabled"])
         self.is_browser_source_audio_enabled: bool = bool(data["is_browser_source_audio_enabled"])
-        self.slot_count: int = int(data["slot_count"])     
+        self.slot_count: int = int(data["slot_count"])
+
 
 _DataType = Union[
     ChannelBanData,
@@ -1614,7 +1639,7 @@ _DataType = Union[
     ChannelGuestSessionUpdateData,
     ChannelGuestSessionEndData,
     ChannelGuestSlotpdateData,
-    ChannelGuestSettingsUpdateData
+    ChannelGuestSettingsUpdateData,
 ]
 
 
@@ -1666,7 +1691,7 @@ class _SubscriptionTypes(metaclass=_SubTypesMeta):
 
     channel_shoutout_create = "channel.shoutout.create", 1, ChannelShoutoutCreateData
     channel_shoutout_receive = "channel.shoutout.receive", 1, ChannelShoutoutReceiveData
-    
+
     channel_guest_session_begin = "channel.guest_star_session.begin", "beta", ChannelGuestSessionBeginData
     channel_guest_session_update = "channel.guest_star_session.update", "beta", ChannelGuestSessionUpdateData
     channel_guest_session_end = "channel.guest_star_session.end", "beta", ChannelGuestSessionEndData

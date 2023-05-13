@@ -79,6 +79,11 @@ __all__ = (
     "ShieldStatus",
     "ChatBadge",
     "ChatBadgeVersions",
+    "GuestSettings",
+    "Guest",
+    "GuestSession",
+    "GuestMediaSettings",
+    "GuestStarInvite",
 )
 
 

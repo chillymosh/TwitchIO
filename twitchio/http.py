@@ -1210,7 +1210,7 @@ class TwitchHTTP:
             )
         )
 
-    async def post_guest_star_invites(
+    async def post_guest_star_invite(
         self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, token: str
     ):
         return await self.request(
@@ -1228,7 +1228,7 @@ class TwitchHTTP:
             )
         )
 
-    async def delete_guest_star_invites(
+    async def delete_guest_star_invite(
         self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, token: str
     ):
         return await self.request(
@@ -1266,8 +1266,23 @@ class TwitchHTTP:
         )
 
     async def patch_guest_star_slot(
-        self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, slot_id: str, token: str
+        self,
+        broadcaster_id: str,
+        moderator_id: str,
+        session_id: str,
+        source_slot_id: str,
+        token: str,
+        destination_slot_id: Optional[str] = None,
     ):
+        query = [
+            ("broadcaster_id", broadcaster_id),
+            ("moderator_id", moderator_id),
+            ("session_id", session_id),
+            ("source_slot_id", source_slot_id),
+        ]
+        if destination_slot_id is not None:
+            query.extend([("destination_slot_id", destination_slot_id)])
+
         return await self.request(
             Route(
                 "PATCH",
@@ -1277,9 +1292,80 @@ class TwitchHTTP:
                     ("broadcaster_id", broadcaster_id),
                     ("moderator_id", moderator_id),
                     ("session_id", session_id),
-                    ("guest_id", guest_id),
-                    ("slot_id", slot_id),
+                    ("source_slot_id", source_slot_id),
+                    ("destination_slot_id", destination_slot_id),
                 ],
+                token=token,
+            )
+        )
+
+    async def delete_guest_star_slot(
+        self,
+        broadcaster_id: str,
+        moderator_id: str,
+        session_id: str,
+        guest_id: str,
+        slot_id: str,
+        token: str,
+        should_reinvite_guest: Optional[str] = None,
+    ):
+        query = [
+            ("broadcaster_id", broadcaster_id),
+            ("moderator_id", moderator_id),
+            ("session_id", session_id),
+            ("guest_id", guest_id),
+            ("slot_id", slot_id),
+        ]
+
+        if should_reinvite_guest is not None:
+            query.extend([("should_reinvite_guest", should_reinvite_guest)])
+
+        return await self.request(
+            Route(
+                "DELETE",
+                "guest_star/slot",
+                "",
+                query=query,
+                token=token,
+            )
+        )
+
+    async def patch_guest_star_slot_settings(
+        self,
+        broadcaster_id: str,
+        moderator_id: str,
+        session_id: str,
+        slot_id: str,
+        token: str,
+        is_audio_enabled: Optional[bool] = None,
+        is_video_enabled: Optional[bool] = None,
+        is_live: Optional[bool] = None,
+        volume: Optional[int] = None,
+    ):
+        query = [
+            ("broadcaster_id", broadcaster_id),
+            ("moderator_id", moderator_id),
+            ("session_id", session_id),
+            ("slot_id", slot_id),
+        ]
+
+        if is_audio_enabled is not None:
+            query.extend([("destination_slot_id", is_audio_enabled)])
+        if is_video_enabled is not None:
+            query.extend([("is_video_enabled", is_video_enabled)])
+        if is_live is not None:
+            query.extend([("is_live", is_live)])
+        if volume is not None:
+            if not 0 <= volume <= 100:
+                raise ValueError("Volume must be between 0 and 100")
+            query.extend([("volume", volume)])
+
+        return await self.request(
+            Route(
+                "PATCH",
+                "guest_star/slot",
+                "",
+                query=query,
                 token=token,
             )
         )

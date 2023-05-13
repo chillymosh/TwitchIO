@@ -24,7 +24,8 @@ DEALINGS IN THE SOFTWARE.
 
 import datetime
 import time
-from typing import TYPE_CHECKING, List, Optional, Union, Tuple, Literal
+from typing import TYPE_CHECKING, List, Optional, Union, Tuple
+from typing_extensions import Literal
 
 from .enums import BroadcasterTypeEnum, UserTypeEnum
 from .errors import HTTPException, Unauthorized
@@ -1804,7 +1805,7 @@ class PartialUser:
         """
 
         # TODO Wait and see if this returns an invite object later.
-        data = await self._http.post_guest_star_invites(
+        data = await self._http.post_guest_star_invite(
             broadcaster_id=str(self.id),
             moderator_id=str(moderator_id),
             session_id=session_id,
@@ -1835,7 +1836,7 @@ class PartialUser:
         None
         """
 
-        data = await self._http.post_guest_star_invites(
+        await self._http.post_guest_star_invite(
             broadcaster_id=str(self.id),
             moderator_id=str(moderator_id),
             session_id=session_id,
@@ -1846,7 +1847,7 @@ class PartialUser:
     async def assign_guest_slot(self, token: str, moderator_id: int, session_id: str, guest_id: int, slot_id: str):
         """|coro|
 
-        Revokes a previous sent invite for a Guest Star session.
+        Allows a previously invited user to be assigned a slot within the active Guest Star session, once that guest has indicated they are ready to join.
         Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
 
         Parameters
@@ -1875,6 +1876,149 @@ class PartialUser:
             session_id=session_id,
             guest_id=str(guest_id),
             slot_id=slot_id,
+            token=token,
+        )
+
+    async def update_guest_slot(
+        self,
+        token: str,
+        moderator_id: int,
+        session_id: str,
+        source_slot_id: str,
+        destination_slot_id: Optional[str] = None,
+    ):
+        """|coro|
+
+        Allows a user to update the assigned slot for a particular user within the active Guest Star session.
+        Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The ID of the Guest Star session in which to update slot settings.
+        source_slot_id: :class:`str`
+            The slot assignment previously assigned to a user.
+        destination_slot_id: :class:`str`
+            The slot to move this user assignment to. If the destination slot is occupied, the user assigned will be swapped into source_slot_id.
+
+        Returns
+        --------
+        None
+        """
+        # TODO Check if destination_slot_id becomes required.
+
+        await self._http.patch_guest_star_slot(
+            broadcaster_id=str(self.id),
+            moderator_id=str(moderator_id),
+            session_id=session_id,
+            source_slot_id=source_slot_id,
+            destination_slot_id=destination_slot_id,
+            token=token,
+        )
+
+    async def delete_guest_slot(
+        self,
+        token: str,
+        moderator_id: int,
+        session_id: str,
+        guest_id: str,
+        slot_id: str,
+        should_reinvite_guest: Optional[str] = None,
+    ):
+        """|coro|
+
+        Allows a user to remove a slot assignment from a user participating in an active Guest Star session.
+        This revokes their access to the session immediately and disables their access to publish or subscribe to media within the session.
+        Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The ID of the Guest Star session in which to remove the slot assignment.
+        guest_id: :class:`str`
+            The Twitch User ID corresponding to the guest to remove from the session.
+        slot_id: :class:`str`
+            The slot ID representing the slot assignment to remove from the session.
+        should_reinvite_guest: Optional[:class:`str`]
+            The slot to move this user assignment to. If the destination slot is occupied, the user assigned will be swapped into source_slot_id.
+
+        Returns
+        --------
+        None
+        """
+
+        await self._http.delete_guest_star_slot(
+            broadcaster_id=str(self.id),
+            moderator_id=str(moderator_id),
+            session_id=session_id,
+            guest_id=guest_id,
+            slot_id=slot_id,
+            should_reinvite_guest=should_reinvite_guest,
+            token=token,
+        )
+
+    async def update_guest_slot_settings(
+        self,
+        token: str,
+        moderator_id: int,
+        session_id: str,
+        slot_id: str,
+        is_audio_enabled: Optional[bool] = None,
+        is_video_enabled: Optional[bool] = None,
+        is_live: Optional[bool] = None,
+        volume: Optional[int] = None,
+    ):
+        """|coro|
+
+        Allows a user to update slot settings for a particular guest within a Guest Star session, such as allowing the user to share audio or video within the call as a host.
+        These settings will be broadcasted to all subscribers which control their view of the guest in that slot.
+        One or more of the optional parameters to this API can be specified at any time.
+        Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The ID of the Guest Star session in which to update slot settings.
+        slot_id: :class:`str`
+            The slot assignment that has previously been assigned to a user.
+        is_audio_enabled: :class:`bool`
+            Flag indicating whether the slot is allowed to share their audio with the rest of the session. If false, the slot will be muted in any views containing the slot.
+        is_video_enabled: :class:`bool`
+            Flag indicating whether the slot is allowed to share their video with the rest of the session. If false, the slot will have no video shared in any views containing the slot.
+        is_live: :class:`bool`
+            Flag indicating whether the user assigned to this slot is visible/can be heard from any public subscriptions. Generally, this determines whether or not the slot is enabled in any broadcasting software integrations.
+        volume: :class:`int`
+            Value from 0-100 that controls the audio volume for shared views containing the slot.
+
+        Returns
+        --------
+        None
+        """
+
+        await self._http.patch_guest_star_slot_settings(
+            broadcaster_id=str(self.id),
+            moderator_id=str(moderator_id),
+            session_id=session_id,
+            slot_id=slot_id,
+            is_audio_enabled=is_audio_enabled,
+            is_video_enabled=is_video_enabled,
+            is_live=is_live,
+            volume=volume,
             token=token,
         )
 

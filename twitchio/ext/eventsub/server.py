@@ -248,6 +248,21 @@ class EventSubClient(web.Application):
     def subscribe_channel_prediction_end(self, broadcaster: Union[PartialUser, str, int]):
         return self._subscribe_with_broadcaster(models.SubscriptionTypes.prediction_end, broadcaster)
 
+    def subscribe_channel_guest_session_begin(self, broadcaster: Union[PartialUser, str, int]):
+        return self._subscribe_with_broadcaster(models.SubscriptionTypes.channel_guest_session_begin, broadcaster)
+
+    def subscribe_channel_guest_session_end(self, broadcaster: Union[PartialUser, str, int]):
+        return self._subscribe_with_broadcaster(models.SubscriptionTypes.channel_guest_session_end, broadcaster)
+
+    def subscribe_channel_guest_session_update(self, broadcaster: Union[PartialUser, str, int], moderator: Union[PartialUser, str, int]):
+        return self._subscribe_with_broadcaster_moderator(models.SubscriptionTypes.channel_guest_session_end, broadcaster, moderator)
+
+    def subscribe_channel_guest_slot_update(self, broadcaster: Union[PartialUser, str, int], moderator: Union[PartialUser, str, int]):
+        return self._subscribe_with_broadcaster_moderator(models.SubscriptionTypes.channel_guest_slot_update, broadcaster, moderator)
+
+    def subscribe_channel_guest_settings_update(self, broadcaster: Union[PartialUser, str, int], moderator: Union[PartialUser, str, int]):
+        return self._subscribe_with_broadcaster_moderator(models.SubscriptionTypes.channel_guest_settings_update, broadcaster, moderator)
+
     def subscribe_channel_shield_mode_begin(
         self, broadcaster: Union[PartialUser, str, int], moderator: Union[PartialUser, str, int]
     ):

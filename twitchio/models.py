@@ -2032,9 +2032,9 @@ class GuestMediaSettings:
     __slots__ = ("is_available", "is_host_enabled", "is_guest_enabled")
 
     def __init__(self, data: dict):
-        self.is_available: bool = data["is_available"]
-        self.is_host_enabled: bool = data["is_host_enabled"]
-        self.is_guest_enabled: bool = data["is_guest_enabled"]
+        self.is_available: bool = bool(data["is_available"])
+        self.is_host_enabled: bool = bool(data["is_host_enabled"])
+        self.is_guest_enabled: bool = bool(data["is_guest_enabled"])
 
     def __repr__(self):
         return f"<GuestMediaSettings is_available={self.is_available} is_host_enabled={self.is_host_enabled} is_guest_enabled={self.is_guest_enabled}>"

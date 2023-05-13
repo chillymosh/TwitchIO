@@ -1428,6 +1428,155 @@ class ChannelShoutoutReceiveData(EventData):
         self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
         self.viewer_count: int = data["viewer_count"]
 
+class ChannelGuestSessionBeginData(EventData):
+    """
+    Represents a Guest Star session start event.
+
+    Requires the ``channel:read:guest_star`` or ``channel:manage:guest_star`` scope.
+
+    Attributes
+    -----------
+    broadcaster: :class:`~twitchio.PartialUser`
+        The broadcaster starting the guest star event.
+    session_id: :class:`str`
+        The session ID of the guest star session.
+    started_at: :class:`datetime.datetime`
+        The datetime the guest star session was started.
+    """
+
+    __slots__ = ("broadcaster", "session_id", "started_at")
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
+        self.session_id: str = data["session_id"]
+        self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+
+class ChannelGuestSessionUpdateData(EventData):
+    """
+    Represents a Guest Star session update event.
+
+    Requires the ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star`` scope.
+
+    Attributes
+    -----------
+    broadcaster: :class:`~twitchio.PartialUser`
+        The broadcaster starting the guest star event.
+    moderator: Optional[:class:`~twitchio.PartialUser`]
+        The moderator who updated the guest's state (could be the host). None if the update was performed by the guest.
+    guest: :class:`~twitchio.PartialUser`
+        The guest who transitioned states in the session.
+    session_id: :class:`str`
+        The session ID of the guest star session.
+    slot_id: Optional[:class:`str`]
+        The ID of the slot assignment the guest is assigned to. None if the guest is in the invited state.
+    state: :class:`str`
+       The current state of the user after the update has taken place. Can be one of the following:
+        invited, backstage, ready, live, removed
+    """
+
+    __slots__ = ("broadcaster", "session_id", "started_at", "moderator", "guest", "slot_id", "state")
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
+        self.moderator: Optional[PartialUser] = _transform_user(client, data, "moderator_user") if data["moderator_user_id"] else None
+        self.guest: PartialUser = _transform_user(client, data, "guest_user")
+        self.session_id: str = data["session_id"]
+        self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+
+class ChannelGuestSessionEndData(EventData):
+    """
+    Represents a Guest Star session end event.
+
+    Requires the ``channel:read:guest_star`` or ``channel:manage:guest_star`` scope.
+
+    Attributes
+    -----------
+    broadcaster: :class:`~twitchio.PartialUser`
+        The broadcaster starting the guest star event.
+    session_id: :class:`str`
+        The session ID of the guest star session.
+    started_at: :class:`datetime.datetime`
+        The datetime the guest star session was started.
+    ended_at: :class:`datetime.datetime`
+        The datetime the guest star session was ended.
+    """
+
+    __slots__ = ("broadcaster", "session_id", "started_at", "ended_at")
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
+        self.session_id: str = data["session_id"]
+        self.started_at: datetime.datetime = _parse_datetime(data["started_at"])
+        self.ended_at: datetime.datetime = _parse_datetime(data["ended_at"])
+
+class ChannelGuestSlotpdateData(EventData):
+    """
+    Represents a Guest Star session preference update event.
+
+    Requires the ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star`` scope.
+
+    Attributes
+    -----------
+    broadcaster: :class:`~twitchio.PartialUser`
+        The broadcaster starting the guest star event.
+    moderator: Optional[:class:`~twitchio.PartialUser`]
+        The moderator who updated the guest's state (could be the host). None if the update was performed by the guest.
+    guest: :class:`~twitchio.PartialUser`
+        The guest who transitioned states in the session.
+    session_id: :class:`str`
+        The session ID of the guest star session.
+    slot_id: :class:`str`
+        The ID of the slot assignment the guest is assigned to. None if the guest is in the invited state.
+    host_video_enabled: :class:`bool`
+       Flag that signals whether the host is allowing the slot's video to be seen by participants within the session.
+    host_audio_enabled: :class:`bool`
+       Flag that signals whether the host is allowing the slot's audio to be heard by participants within the session.
+    host_volume: :class:`int`
+       Value between 0-100 that represents the slot's audio level as heard by participants within the session.
+
+    """
+
+    __slots__ = ("broadcaster", "session_id", "moderator", "guest", "slot_id", "host_video_enabled", "host_audio_enabled", "host_volume")
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
+        self.moderator: PartialUser = _transform_user(client, data, "moderator_user")
+        self.guest: Optional[PartialUser] = _transform_user(client, data, "guest_user") if data["guest_user_id"] else None
+        self.session_id: str = data["session_id"]
+        self.slot_id: str = data["slot_id"]
+        self.host_video_enabled: bool = bool(data["slot_id"])
+        self.host_audio_enabled: bool = bool(data["slot_id"])
+        self.host_volume: int = int(data["slot_id"])
+
+class ChannelGuestSettingsUpdateData(EventData):
+    """
+    Represents a Guest Star session settings update event.
+
+    Requires the ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star`` scope.
+
+    Attributes
+    -----------
+    broadcaster: :class:`~twitchio.PartialUser`
+        The broadcaster starting the guest star event.
+    slot_count: :class:`int`
+        Number of slots the Guest Star call interface will allow the host to add to a call.
+    is_moderator_send_live_enabled: :class:`bool`
+       Flag determining if Guest Star moderators have access to control whether a guest is live once assigned to a slot.
+    is_browser_source_audio_enabled: :class:`bool`
+       Flag determining if browser sources subscribed to sessions on this channel should output audio
+    group_layout: :class:`str`
+       This setting determines how the guests within a session should be laid out within a group browser source. Can be one of the following values:
+       tiled or screenshare
+    """
+
+    __slots__ = ("broadcaster", "slot_count", "is_moderator_send_live_enabled", "is_browser_source_audio_enabled", "group_layout")
+
+    def __init__(self, client: EventSubClient, data: dict):
+        self.broadcaster: PartialUser = _transform_user(client, data, "broadcaster_user")
+        self.group_layout: str = data["group_layout"]
+        self.is_moderator_send_live_enabled: bool = bool(data["is_moderator_send_live_enabled"])
+        self.is_browser_source_audio_enabled: bool = bool(data["is_browser_source_audio_enabled"])
+        self.slot_count: int = int(data["slot_count"])     
 
 _DataType = Union[
     ChannelBanData,
@@ -1461,6 +1610,11 @@ _DataType = Union[
     ChannelShieldModeEndData,
     ChannelShoutoutCreateData,
     ChannelShoutoutReceiveData,
+    ChannelGuestSessionBeginData,
+    ChannelGuestSessionUpdateData,
+    ChannelGuestSessionEndData,
+    ChannelGuestSlotpdateData,
+    ChannelGuestSettingsUpdateData
 ]
 
 
@@ -1512,6 +1666,12 @@ class _SubscriptionTypes(metaclass=_SubTypesMeta):
 
     channel_shoutout_create = "channel.shoutout.create", 1, ChannelShoutoutCreateData
     channel_shoutout_receive = "channel.shoutout.receive", 1, ChannelShoutoutReceiveData
+    
+    channel_guest_session_begin = "channel.guest_star_session.begin", "beta", ChannelGuestSessionBeginData
+    channel_guest_session_update = "channel.guest_star_session.update", "beta", ChannelGuestSessionUpdateData
+    channel_guest_session_end = "channel.guest_star_session.end", "beta", ChannelGuestSessionEndData
+    channel_guest_slot_update = "channel.guest_star_slot.update", "beta", ChannelGuestSlotpdateData
+    channel_guest_settings_update = "channel.guest_star_settings.update", "beta", ChannelGuestSessionUpdateData
 
     hypetrain_begin = "channel.hype_train.begin", 1, HypeTrainBeginProgressData
     hypetrain_progress = "channel.hype_train.progress", 1, HypeTrainBeginProgressData

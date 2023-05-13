@@ -1135,3 +1135,151 @@ class TwitchHTTP:
 
     async def get_channel_chat_badges(self, broadcaster_id: str):
         return await self.request(Route("GET", "chat/badges", "", query=[("broadcaster_id", broadcaster_id)]))
+
+    async def get_channel_guest_settings(self, broadcaster_id: str, token: str):
+        return await self.request(
+            Route("GET", "guest_star/channel_settings", "", query=[("broadcaster_id", broadcaster_id)], token=token)
+        )
+
+    async def put_channel_guest_settings(
+        self,
+        token: str,
+        broadcaster_id: Optional[str] = None,
+        is_moderator_send_live_enabled: Optional[bool] = None,
+        slot_count: Optional[int] = None,
+        is_browser_source_audio_enabled: Optional[bool] = None,
+        group_layout: Optional[str] = None,
+        regenerate_browser_sources: Optional[bool] = None,
+    ):
+        data = {
+            "is_moderator_send_live_enabled": is_moderator_send_live_enabled,
+            "slot_count": slot_count,
+            "is_browser_source_audio_enabled": is_browser_source_audio_enabled,
+            "group_layout": group_layout,
+            "regenerate_browser_sources": regenerate_browser_sources,
+        }
+        body = {k: v for k, v in data.items() if v is not None}
+
+        return await self.request(
+            Route(
+                "PUT", "guest_star/channel_settings", body=body, query=[("broadcaster_id", broadcaster_id)], token=token
+            )
+        )
+
+    async def get_guest_star_session(self, broadcaster_id: str, moderator_id: str, token: str):
+        return await self.request(
+            Route(
+                "GET",
+                "guest_star/session",
+                "",
+                query=[("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id)],
+                token=token,
+            )
+        )
+
+    async def post_guest_star_session(self, broadcaster_id: str, token: str):
+        return await self.request(
+            Route(
+                "POST",
+                "guest_star/session",
+                "",
+                query=[("broadcaster_id", broadcaster_id)],
+                token=token,
+            )
+        )
+
+    async def delete_guest_star_session(self, broadcaster_id: str, token: str, session_id: str):
+        return await self.request(
+            Route(
+                "DELETE",
+                "guest_star/session",
+                "",
+                query=[("broadcaster_id", broadcaster_id), ("session_id", session_id)],
+                token=token,
+            )
+        )
+
+    async def get_guest_star_invites(self, broadcaster_id: str, moderator_id: str, session_id: str, token: str):
+        return await self.request(
+            Route(
+                "GET",
+                "guest_star/invites",
+                "",
+                query=[("broadcaster_id", broadcaster_id), ("moderator_id", moderator_id), ("session_id", session_id)],
+                token=token,
+            )
+        )
+
+    async def post_guest_star_invites(
+        self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, token: str
+    ):
+        return await self.request(
+            Route(
+                "POST",
+                "guest_star/invites",
+                "",
+                query=[
+                    ("broadcaster_id", broadcaster_id),
+                    ("moderator_id", moderator_id),
+                    ("session_id", session_id),
+                    ("guest_id", guest_id),
+                ],
+                token=token,
+            )
+        )
+
+    async def delete_guest_star_invites(
+        self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, token: str
+    ):
+        return await self.request(
+            Route(
+                "DELETE",
+                "guest_star/invites",
+                "",
+                query=[
+                    ("broadcaster_id", broadcaster_id),
+                    ("moderator_id", moderator_id),
+                    ("session_id", session_id),
+                    ("guest_id", guest_id),
+                ],
+                token=token,
+            )
+        )
+
+    async def post_guest_star_slot(
+        self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, slot_id: str, token: str
+    ):
+        return await self.request(
+            Route(
+                "POST",
+                "guest_star/slot",
+                "",
+                query=[
+                    ("broadcaster_id", broadcaster_id),
+                    ("moderator_id", moderator_id),
+                    ("session_id", session_id),
+                    ("guest_id", guest_id),
+                    ("slot_id", slot_id),
+                ],
+                token=token,
+            )
+        )
+
+    async def patch_guest_star_slot(
+        self, broadcaster_id: str, moderator_id: str, session_id: str, guest_id: str, slot_id: str, token: str
+    ):
+        return await self.request(
+            Route(
+                "PATCH",
+                "guest_star/slot",
+                "",
+                query=[
+                    ("broadcaster_id", broadcaster_id),
+                    ("moderator_id", moderator_id),
+                    ("session_id", session_id),
+                    ("guest_id", guest_id),
+                    ("slot_id", slot_id),
+                ],
+                token=token,
+            )
+        )

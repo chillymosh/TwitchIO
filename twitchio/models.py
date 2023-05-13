@@ -1866,7 +1866,7 @@ class ChatBadgeVersions:
     description: :class:`str`
         The description of the badge.
     click_action: Optional[:class:`str`]
-        The action to take when clicking on the badge. This can be None if no action is specified
+        The action to take when clicking on the badge. This can be None if no action is specified.
     click_url: Optional[:class:`str`]
         The URL to navigate to when clicking on the badge. This can be None if no URL is specified.
     """
@@ -1894,3 +1894,190 @@ class ChatBadgeVersions:
 
     def __repr__(self):
         return f"<ChatBadgeVersions id={self.id} title={self.title}>"
+
+
+class GuestSettings:
+    """
+    Represents channel settings for configuration of the Guest Star feature for a particular host.
+
+    Attributes
+    -----------
+    is_moderator_send_live_enabled: :class:`bool`
+        Flag determining if Guest Star moderators have access to control whether a guest is live once assigned to a slot.
+    slot_count: :class:`int`
+        Number of slots the Guest Star call interface will allow the host to add to a call. Required to be between 1 and 6.
+    is_browser_source_audio_enabled: :class:`bool`
+        Flag determining if Browser Sources subscribed to sessions on this channel should output audio.
+    group_layout: :class:`str`
+        This setting determines how the guests within a session should be laid out within the browser source.
+        Can be one of the following values: TILED_LAYOUT or SCREENSHARE_LAYOUT
+    browser_source_token :class:`str`
+        View only token to generate browser source URLs.
+    """
+
+    __slots__ = (
+        "is_moderator_send_live_enabled",
+        "slot_count",
+        "is_browser_source_audio_enabled",
+        "group_layout",
+        "browser_source_token",
+    )
+
+    def __init__(self, data: dict):
+        self.is_moderator_send_live_enabled: bool = data["is_moderator_send_live_enabled"]
+        self.slot_count: int = int(data["slot_count"])
+        self.is_browser_source_audio_enabled: bool = data["is_browser_source_audio_enabled"]
+        self.group_layout: str = data["group_layout"]
+        self.browser_source_token: str = data["browser_source_token"]
+
+    def __repr__(self):
+        return f"<GuestSettings is_moderator_send_live_enabled={self.is_moderator_send_live_enabled} slot_count={self.slot_count} is_browser_source_audio_enabled={self.is_browser_source_audio_enabled} group_layout={self.group_layout}>"
+
+
+class GuestSession:
+    """
+    Represents information about an ongoing Guest Star session for a particular channel.
+
+    Attributes
+    -----------
+    id: :class:`str`
+        Summary of the session details.
+    guests: List[:class:`~twitchio.Guest`]
+        List of guests currently interacting with the Guest Star session.
+    """
+
+    __slots__ = (
+        "id",
+        "guests",
+    )
+
+    def __init__(self, http: "TwitchHTTP", data: dict):
+        self.id: str = data["id"]
+        self.guests: List[Guest] = [Guest(http, g) for g in data["guests"]]
+
+    def __repr__(self):
+        return f"<GuestSession id={self.id} guests={self.guests}>"
+
+
+class Guest:
+    """
+    Represents a Guest of a stream.
+
+    Attributes
+    -----------
+    slot_id: :class:`str`
+        ID representing this guest's slot assignment. Host is alwways in slot '0'.
+        Guests are assigned the following consecutive IDs (e.g, "1", "2", "3", etc)
+        Screen Share is represented as a special guest with the ID "SCREENSHARE".
+    is_live: :class:`bool`
+        Flag determining whether or not the guest is visible in the browser source in the host's streaming software.
+    user: :class:`~twitchio.PartialUser`
+        The PartialUser object of the guest assigned to this slot.
+    display_name: :class:`str`
+        The display name of the guest in this slot.
+    volume: :class:`int`
+        Value from 0 to 100 representing the host's volume setting for this guest.
+    assigned_at: :class:`datetime.datetime`
+        Datetime when this guest was assigned a slot in the session.
+    audio_settings: :class:`~twitchio.GuestMediaSettings`
+        Information about the guest's audio settings
+    video_settings: :class:`~twitchio.GuestMediaSettings`
+        Information about the guest's video settings
+    """
+
+    __slots__ = (
+        "slot_id",
+        "is_live",
+        "user",
+        "display_name",
+        "volume",
+        "assigned_at",
+        "audio_settings",
+        "video_settings",
+    )
+
+    def __init__(self, http: "TwitchHTTP", data: dict):
+        self.slot_id: str = data["slot_id"]
+        self.is_live: bool = bool(data["is_live"])
+        self.user: PartialUser = PartialUser(http, data["user_id"], data["user_login"])
+        self.display_name: str = data["user_display_name"]
+        self.volume: int = int(data["volume"])
+        self.assigned_at: datetime.datetime = parse_timestamp(data["assigned_at"])
+        self.audio_settings: GuestMediaSettings = GuestMediaSettings(data["audio"])
+        self.video_settings: GuestMediaSettings = GuestMediaSettings(data["video"])
+
+    def __repr__(self):
+        return f"<Guest slot_id={self.slot_id} user={self.user}>"
+
+
+class GuestMediaSettings:
+    """
+    Represents the media settings of a guest.
+
+    Attributes
+    -----------
+    is_available: :class:`bool`
+        Flag determining whether the host is allowing the guest's audio/video to be seen or heard within the session.
+    is_host_enabled: :class:`bool`
+        Flag determining whether the guest is allowing their audio/video to be transmitted to the session.
+    is_guest_enabled: :class:`bool`
+        Flag determining whether the guest has an appropriate audio/video device available to be transmitted to the session.
+    """
+
+    __slots__ = ("is_available", "is_host_enabled", "is_guest_enabled")
+
+    def __init__(self, data: dict):
+        self.is_available: bool = data["is_available"]
+        self.is_host_enabled: bool = data["is_host_enabled"]
+        self.is_guest_enabled: bool = data["is_guest_enabled"]
+
+    def __repr__(self):
+        return f"<GuestMediaSettings is_available={self.is_available} is_host_enabled={self.is_host_enabled} is_guest_enabled={self.is_guest_enabled}>"
+
+
+class GuestStarInvite:
+    """
+    Represnts a pending invite to a Guest Star session.
+
+    Attributes
+    -----------
+    user: :class:`~twitchio.PartialUser`
+        PartialUser corresponding to the invited guest
+    invited_at: :class:`datetime.datetime`
+        Datetime when this user was invited to the session.
+    status: :class:`str`
+        Status representing the invited user's join state. Can be one of the following:
+        INVITED, ACCEPTED or READY
+    is_video_enabled: :class:`bool`
+        Flag signaling that the invited user has chosen to disable their local video device.
+        The user has hidden themselves, but they may choose to reveal their video feed upon joining the session.
+    is_audio_enabled: :class:`bool`
+        Flag signaling that the invited user has chosen to disable their local audio device.
+        The user has muted themselves, but they may choose to unmute their audio feed upon joining the session.
+    is_video_available: :class:`bool`
+        Flag signaling that the invited user has a video device available for sharing.
+    is_audio_available: :class:`bool`
+        Flag signaling that the invited user has an audio device available for sharing.
+    """
+
+    __slots__ = (
+        "user",
+        "invited_at",
+        "status",
+        "is_video_enabled",
+        "is_audio_enabled",
+        "is_video_available",
+        "is_audio_available",
+    )
+
+    def __init__(self, http: "TwitchHTTP", data: dict):
+        self.user: PartialUser = PartialUser(http=http, id=data["user_id"], name=None)
+        self.invited_at: datetime.datetime = parse_timestamp(data["invited_at"])
+        self.status: str = data["status"]
+        self.is_video_enabled: bool = bool(data["is_video_enabled"])
+        self.is_audio_available: bool = bool(data["is_audio_available"])
+        self.is_video_available: bool = bool(data["is_video_available"])
+        self.is_audio_enabled: bool = bool(data["is_audio_enabled"])
+
+    def __repr__(self):
+        return f"<GuestStarInvite user={self.user} status={self.status} invited_at={self.invited_at}>"

@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 import datetime
 import time
-from typing import TYPE_CHECKING, List, Optional, Union, Tuple
+from typing import TYPE_CHECKING, List, Optional, Union, Tuple, Literal
 
 from .enums import BroadcasterTypeEnum, UserTypeEnum
 from .errors import HTTPException, Unauthorized
@@ -1614,6 +1614,269 @@ class PartialUser:
 
         data = await self._http.get_channel_chat_badges(broadcaster_id=str(self.id))
         return [ChatBadge(x) for x in data]
+
+    async def fetch_guest_settings(self, token: str):
+        """|coro|
+
+        Fetches the channel settings for configuration of the Guest Star feature for a particular host.
+        Query parameter broadcaster_id must match the user_id in the User-Access token
+        Requires OAuth Scope: ``channel:read:guest_star`` or ``channel:manage:guest_star``
+
+
+        token: :class:`str`
+            The oauth token with the ``channel:read:guest_star`` or ``channel:manage:guest_star`` scope.
+        Returns
+        --------
+        :class:`~twitchio.GuestSettings`
+        """
+        from .models import GuestSettings
+
+        data = await self._http.get_channel_guest_settings(broadcaster_id=str(self.id), token=token)
+        return GuestSettings(data[0])
+
+    async def update_guest_settings(
+        self,
+        token: str,
+        is_moderator_send_live_enabled: Optional[bool] = None,
+        slot_count: Optional[int] = None,
+        is_browser_source_audio_enabled: Optional[bool] = None,
+        group_layout: Optional[Literal["TILED_LAYOUT", "SCREENSHARE_LAYOUT"]] = None,
+        regenerate_browser_sources: Optional[bool] = None,
+    ):
+        """|coro|
+
+        Updates the current chat settings for this channel/broadcaster.
+        Query parameter broadcaster_id must match the user_id in the User-Access token
+        Requires OAuth Scope: ``channel:manage:guest_star``
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` scope.
+        is_moderator_send_live_enabled: Optional[:class:`bool`]
+            Flag determining if Guest Star moderators have access to control whether a guest is live once assigned to a slot.
+        slot_count: Optional[:class:`int`]
+            Number of slots the Guest Star call interface will allow the host to add to a call. Required to be between 1 and 6.
+        is_browser_source_audio_enabled: Optional[:class:`bool`]
+            Flag determining if Browser Sources subscribed to sessions on this channel should output audio
+        group_layout: Optional[:Literal:`str`]
+            This setting determines how the guests within a session should be laid out within the browser source.
+            Can be one of the following values: TILED_LAYOUT or SCREENSHARE_LAYOUT
+        regenerate_browser_sources Optional[:class:`bool`]
+            Flag determining if Guest Star should regenerate the auth token associated with the channel's browser sources.
+            Providing a true value for this will immediately invalidate all browser sources previously configured in your streaming software.
+
+        Returns
+        --------
+        None
+        """
+
+        await self._http.put_channel_guest_settings(
+            token=token,
+            broadcaster_id=str(self.id),
+            is_moderator_send_live_enabled=is_moderator_send_live_enabled,
+            slot_count=slot_count,
+            is_browser_source_audio_enabled=is_browser_source_audio_enabled,
+            group_layout=group_layout,
+            regenerate_browser_sources=regenerate_browser_sources,
+        )
+
+    async def fetch_guest_session(self, token: str, moderator_id: int):
+        """|coro|
+
+        Fetches  information about an ongoing Guest Star session for a particular channel.
+        Requires OAuth Scope: ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star``.
+        Guests must be either invited or assigned a slot within the session
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+
+        Returns
+        --------
+        :class:`~twitchio.GuestSession`
+        """
+        from .models import GuestSession
+
+        data = await self._http.get_guest_star_session(
+            broadcaster_id=str(self.id), moderator_id=str(moderator_id), token=token
+        )
+        return GuestSession(self._http, data[0])
+
+    async def create_guest_session(self, token: str):
+        """|coro|
+
+        Creates a Guest Star session on behalf of the broadcaster. Requires the broadcaster to be present in the call interface, or the call will be ended automatically.
+        User must match the user_id in the User-Access token.
+        Requires ``channel:manage:guest_star`` scope.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` scope.
+
+        Returns
+        --------
+        :class:`~twitchio.GuestSession`
+        """
+        from .models import GuestSession
+
+        data = await self._http.post_guest_star_session(broadcaster_id=str(self.id), token=token)
+        return GuestSession(self._http, data[0])
+
+    async def end_guest_session(self, token: str, session_id: str):
+        """|coro|
+
+        Ends a Guest Star session on behalf of the broadcaster. Performs the same action as if the host clicked the 'End Call' button in the Guest Star UI.
+        User must match the user_id in the User-Access token.
+        Requires ``channel:manage:guest_star`` scope.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` scope.
+        session_id: :class:`str`
+            ID for the session to end on behalf of the broadcaster.
+
+        Returns
+        --------
+        :class:`~twitchio.GuestSession`
+        """
+        from .models import GuestSession
+
+        data = await self._http.delete_guest_star_session(
+            broadcaster_id=str(self.id), session_id=session_id, token=token
+        )
+        return GuestSession(self._http, data[0])
+
+    async def fetch_guest_invites(self, token: str, moderator_id: int, session_id: str):
+        """|coro|
+
+        Fetches pending invites to a Guest Star session.
+        Requires OAuth Scope: ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The session ID to query for invite status.
+
+        Returns
+        --------
+        List[:class:`~twitchio.GuestStarInvite`]
+        """
+        from .models import GuestStarInvite
+
+        data = await self._http.get_guest_star_invites(
+            broadcaster_id=str(self.id), moderator_id=str(moderator_id), session_id=session_id, token=token
+        )
+        return [GuestStarInvite(self._http, g) for g in data]
+
+    async def send_guest_invite(self, token: str, moderator_id: int, session_id: str, guest_id: int):
+        """|coro|
+
+        Sends an invite for a Guest Star session.
+        Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The session ID to query for invite status.
+        guest_id: :class:`int`
+            The ID of guest to invite.
+
+        Returns
+        --------
+        None
+        """
+
+        # TODO Wait and see if this returns an invite object later.
+        data = await self._http.post_guest_star_invites(
+            broadcaster_id=str(self.id),
+            moderator_id=str(moderator_id),
+            session_id=session_id,
+            guest_id=str(guest_id),
+            token=token,
+        )
+
+    async def delete_guest_invite(self, token: str, moderator_id: int, session_id: str, guest_id: int):
+        """|coro|
+
+        Revokes a previous sent invite for a Guest Star session.
+        Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The session ID to query for invite status.
+        guest_id: :class:`int`
+            The ID of guest to invite.
+
+        Returns
+        --------
+        None
+        """
+
+        data = await self._http.post_guest_star_invites(
+            broadcaster_id=str(self.id),
+            moderator_id=str(moderator_id),
+            session_id=session_id,
+            guest_id=str(guest_id),
+            token=token,
+        )
+
+    async def assign_guest_slot(self, token: str, moderator_id: int, session_id: str, guest_id: int, slot_id: str):
+        """|coro|
+
+        Revokes a previous sent invite for a Guest Star session.
+        Requires OAuth Scope: ``channel:manage:guest_star`` or ``moderator:manage:guest_star``.
+
+        Parameters
+        -----------
+        token: :class:`str`
+            The oauth token with the ``channel:manage:guest_star`` or ``moderator:manage:guest_star`` scope.
+        moderator_id: :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
+        session_id: :class:`str`
+            The session ID to query for invite status.
+        guest_id: :class:`int`
+            The ID of guest to invite.
+        slot_id: :class:`str`
+            The slot assignment to give to the user.
+
+        Returns
+        --------
+        Optional[:class:`str`]
+        """
+
+        # TODO Check back on how to handle the return code if there is one
+        data = await self._http.post_guest_star_slot(
+            broadcaster_id=str(self.id),
+            moderator_id=str(moderator_id),
+            session_id=session_id,
+            guest_id=str(guest_id),
+            slot_id=slot_id,
+            token=token,
+        )
 
 
 class BitLeaderboardUser(PartialUser):

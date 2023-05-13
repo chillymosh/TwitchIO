@@ -1517,7 +1517,7 @@ class ChannelGuestSessionEndData(EventData):
 
 class ChannelGuestSlotpdateData(EventData):
     """
-    Represents a Guest Star session preference update event.
+    Represents a Guest Star slot setting update event.
 
     Requires the ``channel:read:guest_star``, ``channel:manage:guest_star``, ``moderator:read:guest_star`` or ``moderator:manage:guest_star`` scope.
 
@@ -1696,7 +1696,7 @@ class _SubscriptionTypes(metaclass=_SubTypesMeta):
     channel_guest_session_update = "channel.guest_star_session.update", "beta", ChannelGuestSessionUpdateData
     channel_guest_session_end = "channel.guest_star_session.end", "beta", ChannelGuestSessionEndData
     channel_guest_slot_update = "channel.guest_star_slot.update", "beta", ChannelGuestSlotpdateData
-    channel_guest_settings_update = "channel.guest_star_settings.update", "beta", ChannelGuestSessionUpdateData
+    channel_guest_settings_update = "channel.guest_star_settings.update", "beta", ChannelGuestSettingsUpdateData
 
     hypetrain_begin = "channel.hype_train.begin", 1, HypeTrainBeginProgressData
     hypetrain_progress = "channel.hype_train.progress", 1, HypeTrainBeginProgressData

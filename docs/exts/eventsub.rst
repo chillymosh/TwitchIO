@@ -208,6 +208,26 @@ This is a list of events dispatched by the eventsub ext.
 
     Called when a channel receives a shoutout.
 
+.. function:: event_eventsub_notification_channel_guest_session_begin(event: ChannelGuestSessionBeginData)
+
+    Called when a channel starts a guest session.
+
+.. function:: event_eventsub_notification_channel_guest_session_update(event: ChannelGuestSessionUpdateData)
+
+    Called when a channel updates a guest session.
+
+.. function:: event_eventsub_notification_channel_guest_session_end(event: ChannelGuestSessionEndData)
+
+    Called when a channel ends a guest session.
+
+.. function:: event_eventsub_notification_channel_guest_slot_update(event: ChannelGuestSlotpdateData)
+
+    Called when a channel guest slot setting is updated.
+
+.. function:: event_eventsub_notification_channel_guest_settings_update(event: ChannelGuestSettingsUpdateData)
+
+    Called when the channel guest settings are updated.
+
 API Reference
 --------------
 
@@ -232,6 +252,36 @@ API Reference
 .. attributetable::: ChannelBanData
 
 .. autoclass:: ChannelBanData
+    :members:
+    :inherited-members:
+
+.. attributetable::: ChannelGuestSessionBeginData
+
+.. autoclass:: ChannelGuestSessionBeginData
+    :members:
+    :inherited-members:
+    
+.. attributetable::: ChannelGuestSessionUpdateData
+
+.. autoclass:: ChannelGuestSessionUpdateData
+    :members:
+    :inherited-members:
+
+.. attributetable::: ChannelGuestSessionEndData
+
+.. autoclass:: ChannelGuestSessionEndData
+    :members:
+    :inherited-members:
+
+.. attributetable::: ChannelGuestSlotpdateData
+
+.. autoclass:: ChannelGuestSlotpdateData
+    :members:
+    :inherited-members:
+
+.. attributetable::: ChannelGuestSettingsUpdateData
+
+.. autoclass:: ChannelGuestSettingsUpdateData
     :members:
     :inherited-members:
 

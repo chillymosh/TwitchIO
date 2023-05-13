@@ -74,6 +74,46 @@ ChannelEmote
     :members:
     :inherited-members:
 
+GuestSettings
+------------
+.. attributetable:: GuestSettings
+
+.. autoclass:: GuestSettings
+    :members:
+    :inherited-members:
+
+Guest
+------------
+.. attributetable:: Guest
+
+.. autoclass:: Guest
+    :members:
+    :inherited-members:
+
+GuestSession
+------------
+.. attributetable:: GuestSession
+
+.. autoclass:: GuestSession
+    :members:
+    :inherited-members:
+
+GuestMediaSettings
+------------
+.. attributetable:: GuestMediaSettings
+
+.. autoclass:: GuestMediaSettings
+    :members:
+    :inherited-members:
+
+GuestStarInvite
+------------
+.. attributetable:: GuestStarInvite
+
+.. autoclass:: GuestStarInvite
+    :members:
+    :inherited-members:
+
 ChannelInfo
 ------------
 .. attributetable:: ChannelInfo

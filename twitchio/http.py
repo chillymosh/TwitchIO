@@ -1137,10 +1137,12 @@ class TwitchHTTP:
     async def get_channel_chat_badges(self, broadcaster_id: str):
         return await self.request(Route("GET", "chat/badges", "", query=[("broadcaster_id", broadcaster_id)]))
 
-    async def get_channel_guest_settings(self, broadcaster_id: str, token: str):
-        return await self.request(
-            Route("GET", "guest_star/channel_settings", "", query=[("broadcaster_id", broadcaster_id)], token=token)
-        )
+    async def get_channel_guest_settings(self, broadcaster_id: str, moderator_id: str, token: str):
+        q = [
+            ("from_broadcaster_id", broadcaster_id),
+            ("moderator_id", moderator_id),
+        ]
+        return await self.request(Route("GET", "guest_star/channel_settings", "", query=q, token=token))
 
     async def put_channel_guest_settings(
         self,

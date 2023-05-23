@@ -1620,23 +1620,28 @@ class PartialUser:
         data = await self._http.get_channel_chat_badges(broadcaster_id=str(self.id))
         return [ChatBadge(x) for x in data]
 
-    async def fetch_guest_settings(self, token: str):
+    async def fetch_guest_settings(self, token: str, moderator_id: int):
         """|coro|
 
         Fetches the channel settings for configuration of the Guest Star feature for a particular host.
         Query parameter broadcaster_id must match the user_id in the User-Access token
-        Requires OAuth Scope: ``channel:read:guest_star`` or ``channel:manage:guest_star``
+        Requires OAuth Scope: ``channel:read:guest_star``, ``channel:manage:guest_star``, moderator:read:guest_star or moderator:manage:guest_star
 
 
         token: :class:`str`
             The oauth token with the ``channel:read:guest_star`` or ``channel:manage:guest_star`` scope.
+        moderator_id :class:`int`
+            The ID of the broadcaster or a user that has permission to moderate the broadcaster's chat room.
+            This ID must match the user ID in the user access token.
         Returns
         --------
         :class:`~twitchio.GuestSettings`
         """
         from .models import GuestSettings
 
-        data = await self._http.get_channel_guest_settings(broadcaster_id=str(self.id), token=token)
+        data = await self._http.get_channel_guest_settings(
+            broadcaster_id=str(self.id), moderator_id=str(moderator_id), token=token
+        )
         return GuestSettings(data[0])
 
     async def update_guest_settings(

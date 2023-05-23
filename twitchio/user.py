@@ -604,6 +604,10 @@ class PartialUser:
 
         Follows the user
 
+        .. warning::
+
+            This method is obsolete as Twitch removed the endpoint.
+
         Parameters
         -----------
         userid: :class:`int`
@@ -1168,7 +1172,7 @@ class PartialUser:
         )
         return ChatSettings(self._http, data[0])
 
-    async def chat_announcement(self, token: str, moderator_id: int, message: str, color: Optional[str] = "primary"):
+    async def chat_announcement(self, token: str, moderator_id: int, message: str, color: Optional[str] = None):
         """|coro|
 
         Sends a chat announcement to the specified channel/broadcaster.
@@ -1184,7 +1188,7 @@ class PartialUser:
             The message to be sent.
         color: Optional[:class:`str`]
             The color of the message. Valid values:
-            blue, green orange, pruple. The default is primary.
+            blue, green orange, purple. The default is primary.
         Returns
         --------
         None
@@ -2129,6 +2133,9 @@ class SearchUser(PartialUser):
         self.started_at = datetime.datetime.strptime(data["started_at"], "%Y-%m-%dT%H:%M:%SZ") if self.live else None
         self.tag_ids: List[str] = data["tag_ids"]
         self.tags: List[str] = data["tags"]
+
+    def __repr__(self):
+        return f"<SearchUser id={self.id} display_name={self.name} language={self.language} game_id={self.game_id} title={self.title} live={self.live}>"
 
 
 class User(PartialUser):

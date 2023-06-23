@@ -263,6 +263,13 @@ Goal
     :members:
     :inherited-members:
 
+HypeChatData
+
+.. attributetable:: HypeChatData
+
+.. autoclass:: HypeChatData
+    :members:
+
 HypeTrainContribution
 -----------------------
 .. attributetable:: HypeTrainContribution

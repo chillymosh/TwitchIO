@@ -717,14 +717,29 @@ class TwitchHTTP:
         return await self.request(Route("GET", "channels", query=q, token=token))
 
     async def patch_channel(
-        self, token: str, broadcaster_id: str, game_id: str = None, language: str = None, title: str = None
+        self,
+        token: str,
+        broadcaster_id: str,
+        game_id: str = None,
+        language: str = None,
+        title: str = None,
+        content_classification_labels: List[Dict[str, Union[str, bool]]] = None,
+        is_branded_content: bool = None,
     ):
-        assert any((game_id, language, title))
+        assert any((game_id, language, title, content_classification_labels, is_branded_content))
         body = {
             k: v
-            for k, v in {"game_id": game_id, "broadcaster_language": language, "title": title}.items()
+            for k, v in {
+                "game_id": game_id,
+                "broadcaster_language": language,
+                "title": title,
+                "is_branded_content": is_branded_content,
+            }.items()
             if v is not None
         }
+
+        if content_classification_labels is not None:
+            body["content_classification_labels"] = content_classification_labels
 
         return await self.request(
             Route("PATCH", "channels", query=[("broadcaster_id", broadcaster_id)], body=body, token=token)
@@ -1136,3 +1151,6 @@ class TwitchHTTP:
 
     async def get_channel_chat_badges(self, broadcaster_id: str):
         return await self.request(Route("GET", "chat/badges", "", query=[("broadcaster_id", broadcaster_id)]))
+
+    async def get_content_classification_labels(self, locale: str):
+        return await self.request(Route("GET", "content_classification_labels", "", query=[("locale", locale)]))

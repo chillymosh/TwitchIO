@@ -1387,5 +1387,6 @@ class TwitchHTTP:
                 token=token,
             )
         )
+
     async def get_content_classification_labels(self, locale: str):
         return await self.request(Route("GET", "content_classification_labels", "", query=[("locale", locale)]))

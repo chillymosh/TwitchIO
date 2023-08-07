@@ -1473,7 +1473,7 @@ class ChannelGuestSessionUpdateData(EventData):
         The ID of the slot assignment the guest is assigned to. None if the guest is in the invited state.
     state: :class:`str`
        The current state of the user after the update has taken place. Can be one of the following:
-        invited, backstage, ready, live, removed
+        invited, backstage, ready, live, removed, accepted.
     """
 
     __slots__ = ("broadcaster", "session_id", "started_at", "moderator", "guest", "slot_id", "state")

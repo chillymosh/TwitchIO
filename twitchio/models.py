@@ -2105,6 +2105,8 @@ class GuestStarInvite:
 
     def __repr__(self):
         return f"<GuestStarInvite user={self.user} status={self.status} invited_at={self.invited_at}>"
+
+
 class ContentClassificationLabel:
     """
     id: :class:`str`

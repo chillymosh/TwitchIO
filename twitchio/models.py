@@ -84,6 +84,7 @@ __all__ = (
     "GuestSession",
     "GuestMediaSettings",
     "GuestStarInvite",
+    "ContentClassificationLabel",
 )
 
 
@@ -1095,9 +1096,23 @@ class ChannelInfo:
         This defaults to 0 if the broadcaster_id does not match the user access token.
     tags: List[:class:`str`]
         The tags applied to the channel.
+    content_classification_labels: List[:class:`str`]
+        The CCLs applied to the channel.
+    is_branded_content: :class:`bool`
+        Boolean flag indicating if the channel has branded content.
     """
 
-    __slots__ = ("user", "game_id", "game_name", "title", "language", "delay", "tags")
+    __slots__ = (
+        "user",
+        "game_id",
+        "game_name",
+        "title",
+        "language",
+        "delay",
+        "tags",
+        "content_classification_labels",
+        "is_branded_content",
+    )
 
     def __init__(self, http: "TwitchHTTP", data: dict):
         self.user = PartialUser(http, data["broadcaster_id"], data["broadcaster_name"])
@@ -1107,6 +1122,8 @@ class ChannelInfo:
         self.language: str = data["broadcaster_language"]
         self.delay: int = data["delay"]
         self.tags: List[str] = data["tags"]
+        self.content_classification_labels: List[str] = data["content_classification_labels"]
+        self.is_branded_content: bool = data["is_branded_content"]
 
     def __repr__(self):
         return f"<ChannelInfo user={self.user} game_id={self.game_id} game_name={self.game_name} title={self.title} language={self.language} delay={self.delay}>"
@@ -1943,6 +1960,8 @@ class GuestSession:
     """
     Represents information about an ongoing Guest Star session for a particular channel.
 
+    Represents a Content Classification Label.
+
     Attributes
     -----------
     id: :class:`str`
@@ -2086,3 +2105,22 @@ class GuestStarInvite:
 
     def __repr__(self):
         return f"<GuestStarInvite user={self.user} status={self.status} invited_at={self.invited_at}>"
+class ContentClassificationLabel:
+    """
+    id: :class:`str`
+        Unique identifier for the CCL.
+    description: :class:`str`
+        Localized description of the CCL.
+    name: :class:`str`
+        Localized name of the CCL.
+    """
+
+    __slots__ = ("id", "description", "name")
+
+    def __init__(self, data: dict):
+        self.id: str = data["id"]
+        self.description: str = data["description"]
+        self.name: str = data["name"]
+
+    def __repr__(self):
+        return f"<ContentClassificationLabel id={self.id}>"

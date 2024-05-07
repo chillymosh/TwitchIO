@@ -173,7 +173,9 @@ class Bot(Client):
         prefixes = await self.__get_prefixes__(message)
         message_content = message.content
         if "reply-parent-msg-id" in message.tags:
-            message_content = message_content.split(" ", 1)[1]
+            message_content = " ".join(message.content.split(" ")[1:])
+        else:
+            message_content = message.content
         if not isinstance(prefixes, str):
             for prefix in prefixes:
                 if message_content.startswith(prefix):
@@ -300,7 +302,7 @@ class Bot(Client):
             command_ = parsed.pop(0)
         except KeyError:
             context = cls(message=message, bot=self, prefix=prefix, command=None, valid=False, view=view)
-            error = CommandNotFound("No valid command was passed.")
+            error = CommandNotFound("No valid command was passed.", "")
 
             self.run_event("command_error", context, error)
             return context
@@ -312,7 +314,7 @@ class Bot(Client):
             command_ = self.commands[command_]
         else:
             context = cls(message=message, bot=self, prefix=prefix, command=None, valid=False, view=view)
-            error = CommandNotFound(f'No command "{command_}" was found.')
+            error = CommandNotFound(f'No command "{command_}" was found.', command_)
 
             self.run_event("command_error", context, error)
             return context

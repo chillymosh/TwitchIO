@@ -1,9 +1,97 @@
 :orphan:
 
-Master
+2.9.2
+=======
+- TwitchIO
+    - Changes:
+        - :func:`~twitchio.PartialUser.fetch_moderated_channels` returns "broadcaster_login" api field instead of "broadcaster_name"
+
+    - Bug fixes
+        - fix: :func:`~twitchio.PartialUser.fetch_moderated_channels` used ``user_`` prefix from payload, now uses ``broadcaster_`` instead
+
+- ext.commands
+    - Bug fixes
+        - Fixed return type of :func:`~twitchio.ext.commands.Context.get_user` to PartialChatter / Chatter from PartialUser / User.
+
+
+2.9.1
+=======
+- ext.eventsub
+    - Bug fixes
+        - fix: Special-cased a restart when a specific known bad frame is received.
+
+
+2.9.0
+=======
+- TwitchIO
+    - Additions
+        - Added :class:`~twitchio.AdSchedule` and :class:`~twitchio.Emote`
+        - Added the new ad-related methods for :class:`~twitchio.PartialUser`:
+            - :func:`~twitchio.PartialUser.fetch_ad_schedule`
+            - :func:`~twitchio.PartialUser.snooze_ad`
+        - Added new method :func:`~twitchio.PartialUser.fetch_user_emotes` to :class:`~twitchio.PartialUser`
+        - Added :func:`~twitchio.PartialUser.fetch_moderated_channels` to :class:`~twitchio.PartialUser`
+
+    - Bug fixes
+        - Fixed ``event_token_expired`` not applying to the current request.
+
+- ext.eventsub
+    - Bug fixes
+        - Fixed a crash where a Future could be None, causing unintentional errors.
+        - Special-cased a restart when a specific known bad frame is received.
+
+
+2.8.2
+======
+- ext.commands
+    - Bug fixes
+        - Fixed an issue where built-in converters would raise an internal ``TypeError``.
+
+2.8.1
+======
+- ext.commands
+    - Bug fixes
+        - Fixed an issue where ``CommandNotFound`` couldn't be processed from ``get_context``.
+
+2.8.0
 ======
 - TwitchIO
     - Additions
+        - Added the new follower / followed endpoints for :class:`~twitchio.PartialUser`:
+            - :func:`~twitchio.PartialUser.fetch_channel_followers`
+            - :func:`~twitchio.PartialUser.fetch_channel_following`
+            - :func:`~twitchio.PartialUser.fetch_channel_follower_count`
+            - :func:`~twitchio.PartialUser.fetch_channel_following_count`
+        - The deprecated methods have had warnings added in the docs.
+        - New models for the new methods have been added:
+            - :class:`~twitchio.ChannelFollowerEvent`
+            - :class:`~twitchio.ChannelFollowingEvent`
+        - New optional ``is_featured`` query parameter for :func:`~twitchio.PartialUser.fetch_clips` 
+        - New attribute :attr:`~twitchio.Clip.is_featured` for :class:`~twitchio.Clip`
+
+    - Bug fixes
+        - Fix IndexError when getting prefix when empty message is sent in a reply.
+
+- ext.eventsub
+    - Bug fixes
+        - Fix websocket reconnection event.
+        - Fix another websocket reconnect issue where it tried to decode nonexistent headers.
+
+- ext.commands
+    - Additions
+        - Added support for the following typing constructs in command signatures:
+            - ``Union[A, B]`` / ``A | B``
+            - ``Optional[T]`` / ``T | None``
+            - ``Annotated[T, converter]`` (accessible through the ``typing_extensions`` module on older python versions)
+
+- Docs
+    - Added walkthrough for ext.commands
+
+2.7.0
+======
+- TwitchIO
+    - Additions
+        - Added :func:`~twitchio.PartialUser.fetch_charity_campaigns` with :class:`~twitchio.CharityCampaign` and :class:`~twitchio.CharityValues`.
         - Added :func:`~twitchio.Client.fetch_global_chat_badges`
         - Added User method :func:`~twitchio.PartialUser.fetch_chat_badges`
         - Added repr for :class:`~twitchio.SearchUser`
@@ -23,9 +111,13 @@ Master
         - :func:`~twitchio.Client.event_token_expired` will now be called correctly when response is ``401 Invalid OAuth token``
         - Fix reconnect loop when Twitch sends a RECONNECT via IRC websocket
         - Fix :func:`~twitchio.CustomReward.edit` so it now can enable the reward
+    
+    - Other Changes
+        - Updated the HTTPException to provide useful information when an error is raised.
 
 - ext.eventsub
-    - Added websocket support via eventsub.EventSubWSClient
+    - Added websocket support via :class:`~twitchio.ext.eventsub.EventSubWSClient`.
+    - Added support for charity donation events.
 
 - Other
     - [speed] extra

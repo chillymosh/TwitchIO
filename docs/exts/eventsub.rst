@@ -150,7 +150,7 @@ This is a list of events dispatched by the eventsub ext.
 
     Called when someone cheers on a channel you've subscribed to.
 
-.. function:: event_eventsub_notification_raid(event: Channel)
+.. function:: event_eventsub_notification_raid(event: ChannelRaidData)
 
     Called when someone raids a channel you've subscribed to.
 
@@ -229,6 +229,10 @@ This is a list of events dispatched by the eventsub ext.
 .. function:: event_eventsub_notification_channel_shoutout_receive(event: ChannelShoutoutReceiveData)
 
     Called when a channel receives a shoutout.
+
+.. function:: event_eventsub_notification_channel_charity_donate(event: ChannelCharityDonationData)
+
+    Called when a user donates to an active charity campaign.
 
 API Reference
 --------------
@@ -482,6 +486,12 @@ API Reference
 .. attributetable::: UserUpdateData
 
 .. autoclass:: UserUpdateData
+    :members:
+    :inherited-members:
+
+.. attributetable::: ChannelCharityDonationData
+
+.. autoclass:: ChannelCharityDonationData
     :members:
     :inherited-members:
 

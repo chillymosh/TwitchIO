@@ -10,6 +10,7 @@ from .models import _loads
 from twitchio import PartialUser, Unauthorized, HTTPException
 
 if TYPE_CHECKING:
+    from typing_extensions import Literal
     from twitchio import Client
 
 logger = logging.getLogger("twitchio.ext.eventsub.ws")
@@ -17,7 +18,7 @@ logger = logging.getLogger("twitchio.ext.eventsub.ws")
 _message_types = {
     "notification": models.NotificationEvent,
     "revocation": models.RevokationEvent,
-    "reconnect": models.ReconnectEvent,
+    "session_reconnect": models.ReconnectEvent,
     "session_keepalive": models.KeepAliveEvent,
 }
 _messages = Union[models.NotificationEvent, models.RevokationEvent, models.ReconnectEvent, models.KeepAliveEvent]
@@ -32,7 +33,7 @@ class _Subscription:
         self.token = token
         self.subscription_id: Optional[str] = None
         self.cost: Optional[int] = None
-        self.created: asyncio.Future[Tuple[bool, int]] | None = asyncio.Future()
+        self.created: asyncio.Future[Tuple[Literal[False], int] | Tuple[Literal[True], None]] | None = asyncio.Future()
 
 
 _T = TypeVar("_T")
@@ -117,18 +118,25 @@ class Websocket:
         try:
             resp = await self._http.create_websocket_subscription(obj.event, obj.condition, self._session_id, obj.token)
         except HTTPException as e:
-            assert obj.created
-            obj.created.set_result((False, e.status))  # type: ignore
+            if obj.created:
+                obj.created.set_result((False, e.status))
+
+            else:
+                logger.error(
+                    "An error (%s %s) occurred while attempting to resubscribe to an event on reconnect: %s",
+                    e.status,
+                    e.reason,
+                    e.message,
+                )
+
             return None
 
-        else:
-            assert obj.created
-            obj.created.set_result((True, None))  # type: ignore
+        if obj.created:
+            obj.created.set_result((True, None))
 
         data = resp["data"][0]
-        cost = data["cost"]
         self.remaining_slots = resp["max_total_cost"] - resp["total_cost"]
-        obj.cost = cost
+        obj.cost = data["cost"]
 
         return data
 
@@ -203,6 +211,11 @@ class Websocket:
 
             except TypeError as e:
                 logger.warning(f"Received bad frame: {e.args[0]}")
+
+                if "257" in e.args[0]:  # websocket was closed, reconnect
+                    logger.info("Known bad frame, restarting connection")
+                    await self.connect()
+                    return
 
             except Exception as e:
                 logger.error("Exception in the pump function!", exc_info=e)
@@ -497,3 +510,6 @@ class EventSubWSClient:
         await self._subscribe_with_broadcaster_moderator(
             models.SubscriptionTypes.channel_shoutout_receive, broadcaster, moderator, token
         )
+
+    async def subscribe_channel_charity_donate(self, broadcaster: Union[PartialUser, str, int], token: str):
+        await self._subscribe_with_broadcaster(models.SubscriptionTypes.channel_charity_donate, broadcaster, token)
